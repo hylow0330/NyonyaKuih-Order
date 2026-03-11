@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nyonya Kuih — Order</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root {
+    --cream: #fdf6ec; --warm: #f5e6cc; --blush: #e8c4a0;
+    --terracotta: #c47a3a; --deep: #7a4520;
+    --darkbrown: #3d1f0a; --green: #4a7c59; --text: #2d1a0a;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'DM Sans',sans-serif; background:var(--cream); color:var(--text); min-height:100vh; }
+
+  /* HEADER */
+  header { background:var(--darkbrown); padding:20px 18px 16px; text-align:center; position:relative; overflow:hidden; }
+  header::before { content:''; position:absolute; inset:0; background:repeating-linear-gradient(45deg,transparent,transparent 10px,rgba(255,255,255,.02) 10px,rgba(255,255,255,.02) 20px); pointer-events:none; }
+
+  .lang-bar { position:absolute; top:12px; right:12px; display:flex; gap:4px; z-index:10; }
+  .lang-btn { padding:4px 9px; border-radius:20px; border:1.5px solid rgba(232,196,160,.35); background:transparent; color:rgba(245,230,204,.55); font-size:11px; font-weight:600; cursor:pointer; transition:all .2s; font-family:'DM Sans',sans-serif; }
+  .lang-btn.active, .lang-btn:hover { background:var(--terracotta); border-color:var(--terracotta); color:#fff; }
+
+  .header-badge { display:inline-block; border:1px solid var(--blush); color:var(--blush); font-size:10px; letter-spacing:3px; text-transform:uppercase; padding:3px 12px; border-radius:20px; margin-bottom:8px; }
+  header h1 { font-family:'Playfair Display',serif; color:var(--warm); font-size:clamp(26px,7vw,44px); line-height:1.1; }
+  header h1 em { color:var(--blush); font-style:italic; }
+  header p { color:rgba(245,230,204,.6); font-size:12px; margin-top:5px; }
+
+  /* STEPS */
+  .steps { display:flex; background:var(--warm); border-bottom:2px solid var(--blush); }
+  .step { flex:1; padding:11px 6px; text-align:center; font-size:10.5px; color:var(--terracotta); opacity:.4; transition:opacity .3s; border-bottom:3px solid transparent; white-space:nowrap; }
+  .step.active { opacity:1; border-bottom-color:var(--terracotta); }
+  .step.done { opacity:.65; }
+  .step-num { display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:50%; background:var(--terracotta); color:#fff; font-weight:700; font-size:10px; margin-bottom:3px; }
+  .step.done .step-num { background:var(--green); }
+  .step-label { display:block; }
+
+  /* PAGES */
+  .page { display:none; animation:fadeUp .35s ease; }
+  .page.active { display:block; }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+
+  .section-title { font-family:'Playfair Display',serif; font-size:21px; padding:22px 18px 3px; color:var(--deep); }
+  .section-sub { font-size:12px; color:var(--terracotta); padding:0 18px 14px; }
+
+  /* PRODUCT GRID */
+  .products-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(155px,1fr)); gap:13px; padding:0 14px 90px; }
+
+  .product-card { background:#fff; border-radius:14px; overflow:hidden; box-shadow:0 2px 10px rgba(61,31,10,.08); transition:transform .2s,box-shadow .2s; border:2.5px solid transparent; }
+  .product-card:hover { transform:translateY(-3px); box-shadow:0 6px 18px rgba(61,31,10,.14); }
+  .product-card.selected { border-color:var(--terracotta); }
+
+  .card-img-wrap { position:relative; width:100%; aspect-ratio:1/1; overflow:hidden; background:linear-gradient(135deg,var(--warm),var(--blush)); }
+  .card-img-wrap img { width:100%; height:100%; object-fit:cover; display:block; transition:transform .35s; }
+  .product-card:hover .card-img-wrap img { transform:scale(1.05); }
+  .img-fallback { position:absolute; inset:0; display:none; align-items:center; justify-content:center; font-size:46px; }
+
+  .card-img-wrap::after { content:'✓'; position:absolute; top:8px; right:8px; width:24px; height:24px; border-radius:50%; background:var(--terracotta); color:#fff; font-size:13px; font-weight:700; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity .2s; pointer-events:none; }
+  .product-card.selected .card-img-wrap::after { opacity:1; }
+
+  .card-body { padding:9px 11px 11px; }
+  .card-name { font-family:'Playfair Display',serif; font-size:13.5px; color:var(--deep); margin-bottom:2px; }
+  .card-desc { font-size:10.5px; color:#999; margin-bottom:7px; line-height:1.35; }
+  .card-price { font-weight:700; color:var(--terracotta); font-size:13.5px; }
+  .card-unit { font-size:10px; color:#bbb; font-weight:400; }
+
+  .qty-row { display:flex; align-items:center; justify-content:space-between; margin-top:9px; }
+  .qty-btn { width:27px; height:27px; border-radius:50%; border:none; cursor:pointer; background:var(--warm); color:var(--deep); font-size:17px; font-weight:700; display:flex; align-items:center; justify-content:center; transition:background .2s; }
+  .qty-btn:hover { background:var(--blush); }
+  .qty-val { font-weight:700; font-size:15px; color:var(--deep); min-width:22px; text-align:center; }
+
+  /* CART BAR — always fixed to bottom of screen */
+  .cart-bar { position:fixed; bottom:0; left:0; right:0; z-index:100; background:var(--darkbrown); padding:13px 18px; display:flex; align-items:center; justify-content:space-between; box-shadow:0 -4px 20px rgba(0,0,0,.25); }
+  .cart-info { color:var(--warm); font-size:12.5px; }
+  .cart-total { font-family:'Playfair Display',serif; font-size:19px; color:var(--blush); }
+
+  /* BUTTONS */
+  .btn { display:inline-flex; align-items:center; gap:7px; padding:12px 26px; border-radius:50px; border:none; cursor:pointer; font-family:'DM Sans',sans-serif; font-size:13.5px; font-weight:500; transition:all .2s; }
+  .btn-primary { background:var(--terracotta); color:#fff; }
+  .btn-primary:hover { background:var(--deep); transform:translateY(-1px); }
+  .btn-secondary { background:var(--warm); color:var(--deep); }
+  .btn-secondary:hover { background:var(--blush); }
+  .btn-green { background:#25D366; color:#fff; padding:14px 26px; }
+  .btn-green:hover { background:#1ebe5d; }
+  .btn-copy { background:#e8f4fd; color:#1a6fa8; border:1.5px solid #b8d9f0; }
+  .btn-copy:hover { background:#cce8fa; }
+  .btn-outline { background:transparent; border:2px solid var(--terracotta); color:var(--terracotta); }
+  .btn-outline:hover { background:var(--terracotta); color:#fff; }
+  .btn:disabled { opacity:.4; cursor:not-allowed; transform:none !important; }
+
+  /* FORM */
+  .form-wrap { padding:14px 18px 100px; max-width:500px; margin:0 auto; }
+  .form-group { margin-bottom:16px; }
+  label { display:block; font-size:11.5px; font-weight:500; text-transform:uppercase; letter-spacing:1px; color:var(--terracotta); margin-bottom:5px; }
+  input,textarea { width:100%; padding:12px 15px; border:1.5px solid var(--blush); border-radius:12px; font-family:'DM Sans',sans-serif; font-size:14px; background:#fff; transition:border-color .2s; color:var(--text); }
+  input:focus,textarea:focus { outline:none; border-color:var(--terracotta); box-shadow:0 0 0 3px rgba(196,122,58,.1); }
+  textarea { resize:vertical; min-height:85px; }
+  .form-note { font-size:11px; color:#aaa; margin-top:3px; }
+
+  /* CHECKLIST */
+  .checklist-wrap { padding:14px 18px 100px; max-width:500px; margin:0 auto; }
+  .order-header { background:var(--darkbrown); border-radius:14px; padding:18px; margin-bottom:18px; color:var(--warm); }
+  .order-header h2 { font-family:'Playfair Display',serif; font-size:19px; margin-bottom:3px; }
+  .order-num { font-size:11px; color:var(--blush); letter-spacing:1px; }
+
+  .info-card { background:#fff; border-radius:13px; padding:15px; margin-bottom:13px; box-shadow:0 2px 10px rgba(61,31,10,.06); }
+  .info-card h3 { font-size:10.5px; text-transform:uppercase; letter-spacing:1.5px; color:var(--terracotta); margin-bottom:9px; }
+  .info-row { display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px dashed var(--warm); }
+  .info-row:last-child { border-bottom:none; }
+  .info-key { font-size:12.5px; color:#888; flex-shrink:0; }
+  .info-val { font-size:12.5px; font-weight:500; color:var(--text); text-align:right; max-width:62%; }
+
+  .item-row { display:flex; align-items:center; padding:9px 0; border-bottom:1px dashed var(--warm); }
+  .item-row:last-child { border-bottom:none; }
+  .item-thumb { width:44px; height:44px; border-radius:8px; object-fit:cover; margin-right:11px; flex-shrink:0; background:var(--warm); }
+  .item-name-wrap { flex:1; }
+  .item-name { font-size:13.5px; }
+  .item-unit { font-size:10.5px; color:#aaa; }
+  .item-qty { color:var(--terracotta); font-size:12.5px; margin-left:6px; }
+  .item-subtotal { font-weight:600; font-size:13.5px; margin-left:10px; }
+
+  .total-row { display:flex; justify-content:space-between; align-items:center; padding:13px 0 0; border-top:2px solid var(--terracotta); margin-top:5px; }
+  .total-label { font-size:12.5px; font-weight:500; }
+  .total-amount { font-family:'Playfair Display',serif; font-size:23px; color:var(--terracotta); }
+
+  .action-bar { padding:14px 18px; display:flex; gap:9px; justify-content:center; flex-wrap:wrap; }
+
+  /* TOAST */
+  .toast { position:fixed; bottom:76px; left:50%; transform:translateX(-50%); background:var(--deep); color:#fff; padding:9px 18px; border-radius:50px; font-size:12.5px; z-index:999; opacity:0; transition:opacity .3s; pointer-events:none; white-space:nowrap; }
+  .toast.show { opacity:1; }
+
+  @media(max-width:360px) { .products-grid { grid-template-columns:repeat(2,1fr); gap:9px; padding:0 10px 110px; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="lang-bar">
+    <button class="lang-btn active" onclick="setLang('ms')">BM</button>
+    <button class="lang-btn" onclick="setLang('en')">EN</button>
+    <button class="lang-btn" onclick="setLang('zh')">中文</button>
+  </div>
+  <div class="header-badge" data-i18n="badge">Pesan Online</div>
+  <h1>Nyonya <em>Kuih</em></h1>
+  <p data-i18n="tagline">Kuih tradisional dibuat dengan penuh kasih sayang 🌿</p>
+</header>
+
+<div class="steps">
+  <div class="step active" id="step1"><div class="step-num">1</div><span class="step-label" data-i18n="step1">Pilih Kuih</span></div>
+  <div class="step" id="step2"><div class="step-num">2</div><span class="step-label" data-i18n="step2">Maklumat</span></div>
+  <div class="step" id="step3"><div class="step-num">3</div><span class="step-label" data-i18n="step3">Semak & Hantar</span></div>
+</div>
+
+<!-- CART BAR — fixed to bottom, visible on page 1 only -->
+<div class="cart-bar" id="cartBar">
+  <div>
+    <div class="cart-info" id="cartInfo"></div>
+    <div class="cart-total" id="cartTotal">RM 0.00</div>
+  </div>
+  <button class="btn btn-primary" id="btnToForm" disabled onclick="goToPage(2)">
+    <span data-i18n="next">Seterusnya</span> →
+  </button>
+</div>
+
+<!-- PAGE 1 -->
+<div class="page active" id="page1">
+  <div class="section-title" data-i18n="p1Title">Pilih Kuih Anda</div>
+  <div class="section-sub" data-i18n="p1Sub">Klik + untuk tambah kuantiti yang dikehendaki</div>
+  <div class="products-grid" id="productsGrid"></div>
+</div>
+
+<!-- PAGE 2 -->
+<div class="page" id="page2">
+  <div class="section-title" data-i18n="p2Title">Maklumat Penghantaran</div>
+  <div class="section-sub" data-i18n="p2Sub">Sila isi maklumat anda dengan lengkap</div>
+  <div class="form-wrap">
+    <div class="form-group">
+      <label data-i18n="lName">Nama Penuh *</label>
+      <input type="text" id="custName" data-i18n-ph="phName" placeholder="Contoh: Siti Aminah" />
+    </div>
+    <div class="form-group">
+      <label data-i18n="lPhone">Nombor WhatsApp *</label>
+      <input type="tel" id="custPhone" data-i18n-ph="phPhone" placeholder="Contoh: 0123456789" />
+      <div class="form-note" data-i18n="notePhone">Kami akan hantar pengesahan melalui WhatsApp</div>
+    </div>
+    <div class="form-group">
+      <label data-i18n="lAddress">Alamat Penghantaran *</label>
+      <textarea id="custAddress" data-i18n-ph="phAddress" placeholder="No. rumah, Jalan, Taman, Poskod, Negeri"></textarea>
+    </div>
+    <div class="form-group">
+      <label data-i18n="lDate">Tarikh Penghantaran *</label>
+      <input type="date" id="custDate" />
+    </div>
+    <div class="form-group">
+      <label data-i18n="lNote">Nota Tambahan (Pilihan)</label>
+      <input type="text" id="custNote" data-i18n-ph="phNote" placeholder="Contoh: Letak depan pintu, alergi, dll." />
+    </div>
+    <div style="display:flex;gap:10px;margin-top:20px;">
+      <button class="btn btn-outline" onclick="goToPage(1)">← <span data-i18n="back">Kembali</span></button>
+      <button class="btn btn-primary" style="flex:1" onclick="goToChecklist()"><span data-i18n="review">Semak Pesanan</span> →</button>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 3 -->
+<div class="page" id="page3">
+  <div class="checklist-wrap">
+    <div class="order-header">
+      <h2 data-i18n="p3Title">Semakan Pesanan</h2>
+      <div class="order-num" id="orderNum"></div>
+    </div>
+    <div class="info-card">
+      <h3 data-i18n="custInfo">📋 Maklumat Pelanggan</h3>
+      <div class="info-row"><span class="info-key" data-i18n="lName2">Nama</span><span class="info-val" id="ckName"></span></div>
+      <div class="info-row"><span class="info-key" data-i18n="lPhone2">WhatsApp</span><span class="info-val" id="ckPhone"></span></div>
+      <div class="info-row"><span class="info-key" data-i18n="lDate2">Tarikh Hantar</span><span class="info-val" id="ckDate"></span></div>
+      <div class="info-row"><span class="info-key" data-i18n="lAddress2">Alamat</span><span class="info-val" id="ckAddress"></span></div>
+      <div class="info-row" id="ckNoteRow"><span class="info-key" data-i18n="lNote2">Nota</span><span class="info-val" id="ckNote"></span></div>
+    </div>
+    <div class="info-card">
+      <h3 data-i18n="orderItems">🧁 Item Pesanan</h3>
+      <div id="ckItems"></div>
+      <div class="total-row">
+        <span class="total-label" data-i18n="grandTotal">Jumlah Keseluruhan</span>
+        <span class="total-amount" id="ckTotal"></span>
+      </div>
+    </div>
+    <p style="font-size:11.5px;color:#aaa;text-align:center;margin-bottom:16px;" data-i18n="confirmNote">
+      Sila semak pesanan anda sebelum menghantar. Terima kasih! 🙏
+    </p>
+    <div class="action-bar">
+      <button class="btn btn-outline" onclick="goToPage(2)">← <span data-i18n="edit">Edit</span></button>
+      <button class="btn btn-secondary" onclick="downloadPDF()">📄 <span data-i18n="dlPDF">Muat Turun PDF</span></button>
+      <button class="btn btn-copy" onclick="copyOrder()">📋 <span data-i18n="copyOrder">Salin Teks</span></button>
+      <button class="btn btn-green" onclick="sendWhatsApp()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        <span data-i18n="sendWA">Hantar ke WhatsApp</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  LANGUAGE STRINGS
+// ═══════════════════════════════════════════════
+const I18N = {
+  ms: {
+    badge:'Pesan Online', tagline:'Kuih tradisional dibuat dengan penuh kasih sayang 🌿',
+    step1:'Pilih Kuih', step2:'Maklumat', step3:'Semak & Hantar',
+    p1Title:'Pilih Kuih Anda', p1Sub:'Klik + untuk tambah kuantiti yang dikehendaki',
+    p2Title:'Maklumat Penghantaran', p2Sub:'Sila isi maklumat anda dengan lengkap',
+    p3Title:'Semakan Pesanan',
+    lName:'Nama Penuh *', lPhone:'Nombor WhatsApp *', lAddress:'Alamat Penghantaran *',
+    lDate:'Tarikh Penghantaran *', lNote:'Nota Tambahan (Pilihan)',
+    phName:'Contoh: Siti Aminah', phPhone:'Contoh: 0123456789',
+    phAddress:'No. rumah, Jalan, Taman, Poskod, Negeri',
+    phNote:'Contoh: Letak depan pintu, alergi, dll.',
+    notePhone:'Kami akan hantar pengesahan melalui WhatsApp',
+    next:'Seterusnya', back:'Kembali', review:'Semak Pesanan',
+    edit:'Edit', dlPDF:'Muat Turun PDF', sendWA:'Hantar ke WhatsApp',
+    custInfo:'📋 Maklumat Pelanggan', orderItems:'🧁 Item Pesanan',
+    grandTotal:'Jumlah Keseluruhan',
+    lName2:'Nama', lPhone2:'WhatsApp', lDate2:'Tarikh Hantar', lAddress2:'Alamat', lNote2:'Nota',
+    confirmNote:'Sila semak pesanan anda sebelum menghantar. Terima kasih! 🙏',
+    cartNone:'Tiada item dipilih', cartItems:n=>`${n} jenis kuih dipilih`,
+    orderLabel:'No. Pesanan', errFill:'Sila isi semua maklumat yang diperlukan ✏️',
+    toastPDF:'PDF berjaya dimuat turun! 📄',
+    waHeader:'PESANAN BARU', waName:'Nama', waPhone:'WhatsApp', waDate:'Tarikh Hantar',
+    waAddress:'Alamat', waNote:'Nota', waItems:'ITEM PESANAN',
+    waTotal:'JUMLAH', waThanks:'Sila sahkan pesanan saya. Terima kasih!',
+    copyOrder:'Salin Teks', toastCopied:'Teks pesanan disalin! 📋',
+    pdfOrderList:'Senarai Pesanan', pdfCustSection:'MAKLUMAT PELANGGAN',
+    pdfItem:'Kuih', pdfPrice:'Harga/unit', pdfQty:'Kuantiti', pdfSub:'Subtotal',
+    pdfTotal:'JUMLAH', pdfFooter:'Terima kasih kerana memesan! Pesanan akan disahkan melalui WhatsApp.',
+    months:['Jan','Feb','Mac','Apr','Mei','Jun','Jul','Ogs','Sep','Okt','Nov','Dis'],
+  },
+  en: {
+    badge:'Order Online', tagline:'Traditional kuih made with love 🌿',
+    step1:'Choose', step2:'Details', step3:'Review & Send',
+    p1Title:'Choose Your Kuih', p1Sub:'Tap + to add quantity',
+    p2Title:'Delivery Details', p2Sub:'Please fill in all your information',
+    p3Title:'Order Summary',
+    lName:'Full Name *', lPhone:'WhatsApp Number *', lAddress:'Delivery Address *',
+    lDate:'Delivery Date *', lNote:'Additional Notes (Optional)',
+    phName:'e.g. Sarah Lee', phPhone:'e.g. 0123456789',
+    phAddress:'House no., Street, Area, Postcode, State',
+    phNote:'e.g. Leave at door, allergies, etc.',
+    notePhone:'We will send order confirmation via WhatsApp',
+    next:'Next', back:'Back', review:'Review Order',
+    edit:'Edit', dlPDF:'Download PDF', sendWA:'Send to WhatsApp',
+    custInfo:'📋 Customer Info', orderItems:'🧁 Order Items',
+    grandTotal:'Grand Total',
+    lName2:'Name', lPhone2:'WhatsApp', lDate2:'Delivery Date', lAddress2:'Address', lNote2:'Notes',
+    confirmNote:'Please review your order before sending. Thank you! 🙏',
+    cartNone:'No items selected', cartItems:n=>`${n} item type(s) selected`,
+    orderLabel:'Order No.', errFill:'Please fill in all required fields ✏️',
+    toastPDF:'PDF downloaded successfully! 📄',
+    waHeader:'NEW ORDER', waName:'Name', waPhone:'WhatsApp', waDate:'Delivery Date',
+    waAddress:'Address', waNote:'Notes', waItems:'ORDER ITEMS',
+    waTotal:'TOTAL', waThanks:'Please confirm my order. Thank you!',
+    copyOrder:'Copy Text', toastCopied:'Order text copied! 📋',
+    pdfOrderList:'Order List', pdfCustSection:'CUSTOMER INFORMATION',
+    pdfItem:'Item', pdfPrice:'Price/unit', pdfQty:'Qty', pdfSub:'Subtotal',
+    pdfTotal:'TOTAL', pdfFooter:'Thank you for your order! We will confirm via WhatsApp.',
+    months:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+  },
+  zh: {
+    badge:'在线订购', tagline:'传统娘惹糕点，用爱手工制作 🌿',
+    step1:'选择糕点', step2:'填写资料', step3:'确认下单',
+    p1Title:'选择您的糕点', p1Sub:'点击 + 添加数量',
+    p2Title:'送货资料', p2Sub:'请填写完整资料',
+    p3Title:'订单确认',
+    lName:'全名 *', lPhone:'WhatsApp 号码 *', lAddress:'送货地址 *',
+    lDate:'送货日期 *', lNote:'备注（选填）',
+    phName:'例：陈美玲', phPhone:'例：0123456789',
+    phAddress:'门牌号、街道、花园、邮编、州属',
+    phNote:'例：放在门口、过敏事项等',
+    notePhone:'我们将通过 WhatsApp 发送确认信息',
+    next:'下一步', back:'返回', review:'查看订单',
+    edit:'修改', dlPDF:'下载 PDF', sendWA:'发送至 WhatsApp',
+    custInfo:'📋 顾客资料', orderItems:'🧁 订购糕点',
+    grandTotal:'总计',
+    lName2:'姓名', lPhone2:'WhatsApp', lDate2:'送货日期', lAddress2:'地址', lNote2:'备注',
+    confirmNote:'请在发送前确认您的订单。谢谢！🙏',
+    cartNone:'尚未选择任何糕点', cartItems:n=>`已选 ${n} 种糕点`,
+    orderLabel:'订单号', errFill:'请填写所有必填项目 ✏️',
+    toastPDF:'PDF 下载成功！📄',
+    waHeader:'新订单', waName:'姓名', waPhone:'WhatsApp', waDate:'送货日期',
+    waAddress:'地址', waNote:'备注', waItems:'订购糕点',
+    waTotal:'总计', waThanks:'请确认我的订单，谢谢！',
+    copyOrder:'复制文字', toastCopied:'订单文字已复制！📋',
+    pdfOrderList:'订单列表', pdfCustSection:'顾客资料',
+    pdfItem:'糕点名称', pdfPrice:'单价', pdfQty:'数量', pdfSub:'小计',
+    pdfTotal:'总计', pdfFooter:'感谢您的订购！我们将通过 WhatsApp 确认您的订单。',
+    months:['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'],
+  }
+};
+
+let currentLang = 'ms';
+
+function setLang(lang) {
+  currentLang = lang;
+  const labels = {ms:'BM', en:'EN', zh:'中文'};
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.textContent.trim() === labels[lang]));
+  const t = I18N[lang];
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const k = el.getAttribute('data-i18n');
+    if (t[k] && typeof t[k] === 'string') el.textContent = t[k];
+  });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+    const k = el.getAttribute('data-i18n-ph');
+    if (t[k]) el.placeholder = t[k];
+  });
+  updateCartBar();
+}
+
+// ═══════════════════════════════════════════════
+//  PRODUCTS
+//  To add a product: copy one block, change the fields.
+//  img: use a real photo URL, or leave as '' for emoji fallback.
+// ═══════════════════════════════════════════════
+const PRODUCTS = [
+  { id:1, emoji:'🟢', name:'Kuih Ketayap',  desc:'Lapisan pandan & pulut putih',    price:1.20, unit:'sepotong / piece / 一块',      img:'ketayap_kuih.jpeg' },
+  { id:2, emoji:'🩷', name:'Kuih Piring',       desc:'Lapisan warna-warni yang cantik', price:1.20, unit:'sepotong / piece / 一块',      img:'kuih_piring.jpeg' },
+  { id:3, emoji:'🟤', name:'Pulut Panggang',        desc:'Bola pandan isi gula melaka',     price:1.20, unit:'sepotong / piece / 一块',   img:'https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=500&q=80' },
+  { id:4, emoji:'🤍', name:'Heipan',    desc:'Pulut biru dengan kaya',          price:1.20, unit:'sepotong / piece / 一块',      img:'heipan.jpeg' },
+  { id:6, emoji:'🟠', name:'Mini Heipan / Angku',     desc:'Garing, ringan & harum',          price:1.20, unit:'sekotak / pac / 一盒', img:'mini_heipan_mini_angku.jpeg' },
+  { id:7, emoji:'🩵', name:'Ondeh-Ondeh',       desc:'Lapisan pandan & santan',         price:1.20, unit:'sekotak / pac / 一盒',      img:'https://images.unsplash.com/photo-1565299507177-b0ac66763828?w=500&q=80' },
+  { id:8, emoji:'🟣', name:'Nuomici',        desc:'Dibungkus daun pisang',           price:1.20, unit:'sepotong / piece / 一块',   img:'Nuomici.jpeg' },
+  { id:9, emoji:'🟣', name:'Malaiko',        desc:'Dibungkus daun pisang',           price:1.20, unit:'sepotong / piece / 一块',   img:'Malaiko.jpeg' },
+  { id:10, emoji:'🟣', name:'Angku',        desc:'Dibungkus daun pisang',           price:1.20, unit:'sepotong / piece / 一块',   img:'angku.jpeg' },
+
+];
+
+const WHATSAPP_NUMBER = '601133239843'; // ← TUKAR KE NOMBOR ANDA
+
+const cart = {};
+
+function renderProducts() {
+  document.getElementById('productsGrid').innerHTML = PRODUCTS.map(p => `
+    <div class="product-card ${cart[p.id]?'selected':''}" id="card-${p.id}">
+      <div class="card-img-wrap">
+        ${p.img
+          ? `<img src="${p.img}" alt="${p.name}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+          : ''}
+        <div class="img-fallback" style="${p.img?'':'display:flex'}">${p.emoji}</div>
+      </div>
+      <div class="card-body">
+        <div class="card-name">${p.name}</div>
+        <div class="card-desc">${p.desc}</div>
+        <div class="card-price">RM ${p.price.toFixed(2)} <span class="card-unit">/ ${p.unit}</span></div>
+        <div class="qty-row">
+          <button class="qty-btn" onclick="changeQty(${p.id},-1)">−</button>
+          <span class="qty-val" id="qty-${p.id}">${cart[p.id]||0}</span>
+          <button class="qty-btn" onclick="changeQty(${p.id},1)">+</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function changeQty(id, delta) {
+  const next = Math.max(0, (cart[id]||0) + delta);
+  if (next === 0) delete cart[id]; else cart[id] = next;
+  document.getElementById(`qty-${id}`).textContent = next;
+  document.getElementById(`card-${id}`).classList.toggle('selected', next > 0);
+  updateCartBar();
+}
+
+function getTotal() {
+  return Object.entries(cart).reduce((s,[id,q])=>{
+    const p=PRODUCTS.find(x=>x.id==id); return s+(p?p.price*q:0);
+  },0);
+}
+
+function updateCartBar() {
+  const t = I18N[currentLang];
+  const n = Object.keys(cart).length;
+  document.getElementById('cartInfo').textContent = n ? t.cartItems(n) : t.cartNone;
+  document.getElementById('cartTotal').textContent = `RM ${getTotal().toFixed(2)}`;
+  document.getElementById('btnToForm').disabled = n === 0;
+}
+
+function goToPage(n) {
+  document.querySelectorAll('.page').forEach((p,i)=>p.classList.toggle('active',i===n-1));
+  document.querySelectorAll('.step').forEach((s,i)=>{
+    s.classList.toggle('active',i===n-1); s.classList.toggle('done',i<n-1);
+  });
+  // Show cart bar only on page 1
+  document.getElementById('cartBar').style.display = n===1 ? 'flex' : 'none';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function goToChecklist() {
+  const t = I18N[currentLang];
+  const name = document.getElementById('custName').value.trim();
+  const phone = document.getElementById('custPhone').value.trim();
+  const address = document.getElementById('custAddress').value.trim();
+  const date = document.getElementById('custDate').value;
+  if (!name||!phone||!address||!date) { showToast(t.errFill); return; }
+
+  const orderNum = 'NYK-'+Date.now().toString().slice(-6);
+  document.getElementById('orderNum').textContent = `${t.orderLabel}: ${orderNum}`;
+  document.getElementById('ckName').textContent = name;
+  document.getElementById('ckPhone').textContent = phone;
+  document.getElementById('ckAddress').textContent = address;
+  document.getElementById('ckDate').textContent = formatDate(date);
+  const note = document.getElementById('custNote').value.trim();
+  document.getElementById('ckNoteRow').style.display = note?'':'none';
+  document.getElementById('ckNote').textContent = note;
+
+  document.getElementById('ckItems').innerHTML = Object.entries(cart).map(([id,qty])=>{
+    const p=PRODUCTS.find(x=>x.id==id);
+    return `<div class="item-row">
+      <img class="item-thumb" src="${p.img||''}" alt="${p.name}" onerror="this.style.display='none'">
+      <div class="item-name-wrap"><div class="item-name">${p.name}</div><div class="item-unit">${p.unit}</div></div>
+      <span class="item-qty">x${qty}</span>
+      <span class="item-subtotal">RM ${(p.price*qty).toFixed(2)}</span>
+    </div>`;
+  }).join('');
+  document.getElementById('ckTotal').textContent = `RM ${getTotal().toFixed(2)}`;
+  goToPage(3);
+}
+
+function formatDate(d) {
+  if(!d) return '-';
+  const [y,m,day]=d.split('-');
+  return `${day} ${I18N[currentLang].months[parseInt(m)-1]} ${y}`;
+}
+
+function downloadPDF() {
+  const PDF = {
+    orderList:'Order List', custSection:'CUSTOMER INFORMATION',
+    name:'Name', whatsapp:'WhatsApp', delivDate:'Delivery Date',
+    address:'Address', notes:'Notes',
+    no:'No.', item:'Item', price:'Price/unit', qty:'Qty', sub:'Subtotal',
+    total:'TOTAL', orderNo:'Order No.',
+    footer:'Thank you for your order! We will confirm via WhatsApp.',
+  };
+  const PDF_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  const {jsPDF} = window.jspdf;
+  const doc = new jsPDF({unit:'mm', format:'a4'});
+  const name    = document.getElementById('custName').value.trim();
+  const phone   = document.getElementById('custPhone').value.trim();
+  const address = document.getElementById('custAddress').value.trim();
+  const date    = document.getElementById('custDate').value;
+  const note    = document.getElementById('custNote').value.trim();
+  const rawNum  = document.getElementById('orderNum').textContent;
+  const orderNum= (rawNum.match(/NYK-\d+/) || [rawNum])[0];
+  const pdfDate = date ? (([y,m,d])=>`${d} ${PDF_MONTHS[parseInt(m)-1]} ${y}`)(date.split('-')) : '-';
+
+  // ── Header ──
+  doc.setFillColor(61,31,10); doc.rect(0,0,210,42,'F');
+  doc.setTextColor(245,230,204); doc.setFontSize(24); doc.setFont('times','bolditalic');
+  doc.text('Nyonya Kuih', 105, 18, {align:'center'});
+  doc.setFontSize(10); doc.setFont('helvetica','normal');
+  doc.setTextColor(196,122,58); doc.text(PDF.orderList, 105, 28, {align:'center'});
+  doc.setTextColor(190,165,135); doc.text(`${PDF.orderNo}: ${orderNum}`, 105, 36, {align:'center'});
+
+  // ── Customer Info ──
+  let y = 54;
+  doc.setFillColor(253,246,236); doc.roundedRect(14, y-6, 182, 58, 3, 3, 'F');
+  doc.setFontSize(8.5); doc.setTextColor(196,122,58); doc.setFont('helvetica','bold');
+  doc.text(PDF.custSection, 20, y); y += 8;
+
+  const custRows = [
+    [PDF.name, name], [PDF.whatsapp, phone],
+    [PDF.delivDate, pdfDate], [PDF.address, address],
+  ];
+  if (note) custRows.push([PDF.notes, note]);
+  custRows.forEach(([k,v]) => {
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(150,100,50);
+    doc.text(k+':', 20, y);
+    doc.setFont('helvetica','normal'); doc.setTextColor(40,20,5);
+    const lines = doc.splitTextToSize(v, 118);
+    doc.text(lines, 60, y);
+    y += 7 * lines.length;
+  });
+
+  // ── Items Table ──
+  y += 8;
+  // Column X positions
+  const COL = { no:14, name:24, price:112, qty:148, sub:196 };
+  const ROW_H = 14;
+
+  // Table header
+  doc.setFillColor(61,31,10); doc.roundedRect(14, y-5, 182, 11, 2, 2, 'F');
+  doc.setTextColor(245,230,204); doc.setFont('helvetica','bold'); doc.setFontSize(8.5);
+  doc.text(PDF.no,       COL.no,    y+2);
+  doc.text(PDF.item,     COL.name,  y+2);
+  doc.text(PDF.price,    COL.price, y+2, {align:'right'});
+  doc.text(PDF.qty,      COL.qty,   y+2, {align:'right'});
+  doc.text(PDF.sub,      COL.sub,   y+2, {align:'right'});
+  y += 13;
+
+  // Table rows — numbered
+  let rowNum = 1;
+  Object.entries(cart).forEach(([id,qty]) => {
+    const p = PRODUCTS.find(x => x.id == id);
+    const isAlt = rowNum % 2 === 0;
+    if (isAlt) { doc.setFillColor(253,246,236); doc.rect(14, y-5, 182, ROW_H, 'F'); }
+
+    // Row number
+    doc.setTextColor(180,130,70); doc.setFont('helvetica','bold'); doc.setFontSize(8.5);
+    doc.text(String(rowNum), COL.no+1, y);
+
+    // Item name
+    doc.setTextColor(40,20,5); doc.setFont('helvetica','normal'); doc.setFontSize(10);
+    doc.text(p.name, COL.name, y);
+
+    // Unit (short, Latin only)
+    const shortUnit = p.unit.split('/').slice(0,2).map(s=>s.trim()).join(' / ');
+    doc.setFontSize(7.5); doc.setTextColor(160,110,60);
+    doc.text(shortUnit, COL.name, y+5);
+
+    // Price, Qty, Subtotal
+    doc.setTextColor(40,20,5); doc.setFont('helvetica','normal'); doc.setFontSize(10);
+    doc.text('RM '+p.price.toFixed(2), COL.price, y, {align:'right'});
+    doc.text('x'+qty,                  COL.qty,   y, {align:'right'});
+    doc.setFont('helvetica','bold');
+    doc.text('RM '+(p.price*qty).toFixed(2), COL.sub, y, {align:'right'});
+
+    y += ROW_H; rowNum++;
+  });
+
+  // ── Total row ──
+  doc.setDrawColor(196,122,58); doc.setLineWidth(0.4); doc.line(14, y-2, 196, y-2);
+  doc.setFillColor(196,122,58); doc.roundedRect(118, y, 78, 13, 2, 2, 'F');
+  doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(11);
+  doc.text(PDF.total+':', 125, y+9);
+  doc.text('RM '+getTotal().toFixed(2), 192, y+9, {align:'right'});
+
+  // ── Footer ──
+  y += 26;
+  doc.setFontSize(8); doc.setTextColor(160,110,60); doc.setFont('helvetica','italic');
+  doc.text(PDF.footer, 105, y, {align:'center'});
+
+  doc.save(`Order_NyonyaKuih_${orderNum}.pdf`);
+  showToast(I18N[currentLang].toastPDF);
+}
+
+// Shared function to build order message text
+function buildOrderText() {
+  const t = I18N[currentLang];
+  const name    = document.getElementById('custName').value.trim();
+  const phone   = document.getElementById('custPhone').value.trim();
+  const address = document.getElementById('custAddress').value.trim();
+  const date    = document.getElementById('custDate').value;
+  const note    = document.getElementById('custNote').value.trim();
+  const rawNum  = document.getElementById('orderNum').textContent;
+  const orderNum= (rawNum.match(/NYK-\d+/) || [rawNum])[0];
+
+  let msg = `*${t.waHeader} — Nyonya Kuih*\n`;
+  msg += `──────────────────\n`;
+  msg += `*${t.orderLabel || 'Order No.'}:* ${orderNum}\n\n`;
+  msg += `*${t.waName}:* ${name}\n`;
+  msg += `*${t.waPhone}:* ${phone}\n`;
+  msg += `*${t.waDate}:* ${formatDate(date)}\n`;
+  msg += `*${t.waAddress}:* ${address}\n`;
+  if (note) msg += `*${t.waNote}:* ${note}\n`;
+  msg += `\n──────────────────\n`;
+  msg += `*${t.waItems}:*\n`;
+  let i = 1;
+  Object.entries(cart).forEach(([id,qty]) => {
+    const p = PRODUCTS.find(x => x.id == id);
+    msg += `${i}. ${p.name} x${qty}  =  RM ${(p.price*qty).toFixed(2)}\n`;
+    i++;
+  });
+  msg += `──────────────────\n`;
+  msg += `*${t.waTotal}: RM ${getTotal().toFixed(2)}*\n\n`;
+  msg += t.waThanks;
+  return msg;
+}
+
+function sendWhatsApp() {
+  const msg = buildOrderText();
+  window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+function copyOrder() {
+  const msg = buildOrderText();
+  navigator.clipboard.writeText(msg).then(() => {
+    showToast(I18N[currentLang].toastCopied);
+  }).catch(() => {
+    // Fallback for older browsers
+    const ta = document.createElement('textarea');
+    ta.value = msg; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast(I18N[currentLang].toastCopied);
+  });
+}
+
+function showToast(msg) {
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),3000);
+}
+
+// Init
+renderProducts();
+setLang('ms');
+document.getElementById('custDate').min = new Date().toISOString().split('T')[0];
+</script>
+</body>
+</html>
