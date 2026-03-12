@@ -132,6 +132,72 @@
   .toast.show { opacity:1; }
 
   @media(max-width:360px) { .products-grid { grid-template-columns:repeat(2,1fr); gap:9px; padding:0 10px 110px; } }
+
+  /* ── VARIANT BADGE on card ── */
+  .variant-badge { display:inline-block; background:var(--terracotta); color:#fff; font-size:9px; font-weight:700; letter-spacing:.5px; padding:2px 7px; border-radius:20px; margin-bottom:5px; text-transform:uppercase; }
+  .card-variant-summary { font-size:10px; color:var(--terracotta); margin-top:5px; font-style:italic; line-height:1.4; }
+  .var-select-btn { display:block; width:100%; padding:9px 0; border-radius:10px; border:none; cursor:pointer; background:var(--terracotta); color:#fff; font-family:'DM Sans',sans-serif; font-size:12.5px; font-weight:600; text-align:center; transition:background .2s; }
+  .var-select-btn:hover { background:var(--deep); }
+
+  /* ── MODAL OVERLAY ── */
+  .modal-overlay { position:fixed; inset:0; background:rgba(30,10,0,.55); z-index:500; display:none; align-items:flex-end; justify-content:center; animation:fadeIn .2s ease; }
+  .modal-overlay.open { display:flex; }
+  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+
+  .modal-sheet {
+    background:#fff; border-radius:22px 22px 0 0;
+    width:100%; max-width:520px; max-height:85vh;
+    display:flex; flex-direction:column;
+    animation:slideUp .3s cubic-bezier(.32,1,.6,1);
+    overflow:hidden;
+  }
+  @keyframes slideUp { from{transform:translateY(60px);opacity:0} to{transform:translateY(0);opacity:1} }
+
+  .modal-header { padding:18px 18px 0; display:flex; align-items:flex-start; gap:14px; }
+  .modal-img { width:72px; height:72px; border-radius:12px; object-fit:cover; flex-shrink:0; background:var(--warm); }
+  .modal-info { flex:1; }
+  .modal-name { font-family:'Playfair Display',serif; font-size:18px; color:var(--deep); }
+  .modal-price { color:var(--terracotta); font-weight:700; font-size:14px; margin-top:2px; }
+  .modal-close { width:32px; height:32px; border-radius:50%; border:none; background:var(--warm); color:var(--deep); font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+
+  .modal-divider { height:1px; background:var(--warm); margin:14px 0 0; }
+  .modal-label { font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--terracotta); padding:12px 18px 6px; }
+
+  .modal-body { overflow-y:auto; padding:0 18px 6px; flex:1; }
+
+  /* Variant rows */
+  .variant-row {
+    display:flex; align-items:center;
+    padding:10px 0; border-bottom:1px dashed var(--warm);
+    gap:10px;
+  }
+  .variant-row:last-child { border-bottom:none; }
+
+  .var-check { position:relative; flex-shrink:0; cursor:pointer; }
+  .var-check-box {
+    width:22px; height:22px; border-radius:6px;
+    border:2px solid var(--blush); background:#fff;
+    display:flex; align-items:center; justify-content:center;
+    transition:all .15s;
+  }
+  .var-check-box.checked { background:var(--terracotta); border-color:var(--terracotta); }
+  .var-check-box::after { content:'✓'; color:#fff; font-size:13px; font-weight:700; opacity:0; }
+  .var-check-box.checked::after { opacity:1; }
+
+  .variant-label { flex:1; font-size:13.5px; color:var(--text); cursor:pointer; }
+  .variant-label small { display:block; font-size:10.5px; color:#aaa; }
+
+  /* Qty stepper for each variant */
+  .var-qty-row { display:flex; align-items:center; gap:6px; }
+  .var-qty-btn { width:26px; height:26px; border-radius:50%; border:none; cursor:pointer; background:var(--warm); color:var(--deep); font-size:16px; font-weight:700; display:flex; align-items:center; justify-content:center; transition:background .15s; }
+  .var-qty-btn:hover { background:var(--blush); }
+  .var-qty-val { font-weight:700; font-size:14px; color:var(--deep); min-width:20px; text-align:center; }
+  .var-qty-row.disabled { opacity:.35; pointer-events:none; }
+
+  .modal-footer { padding:14px 18px; border-top:1px solid var(--warm); background:#fff; }
+  .modal-confirm-btn { width:100%; padding:14px; border-radius:50px; border:none; background:var(--terracotta); color:#fff; font-family:'DM Sans',sans-serif; font-size:15px; font-weight:600; cursor:pointer; transition:background .2s; }
+  .modal-confirm-btn:hover { background:var(--deep); }
+  .modal-confirm-btn:disabled { opacity:.4; cursor:not-allowed; }
 </style>
 </head>
 <body>
@@ -242,6 +308,26 @@
   </div>
 </div>
 
+<!-- VARIANT MODAL -->
+<div class="modal-overlay" id="variantModal" onclick="closeModalOutside(event)">
+  <div class="modal-sheet">
+    <div class="modal-header">
+      <img class="modal-img" id="modalImg" src="" alt="">
+      <div class="modal-info">
+        <div class="modal-name" id="modalName"></div>
+        <div class="modal-price" id="modalPrice"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-divider"></div>
+    <div class="modal-label" data-i18n="variantLabel">Pilih Perisa / Flavour</div>
+    <div class="modal-body" id="modalVariants"></div>
+    <div class="modal-footer">
+      <button class="modal-confirm-btn" id="modalConfirmBtn" onclick="confirmVariants()" data-i18n="variantConfirm">Tambah ke Pesanan</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -274,6 +360,8 @@ const I18N = {
     waAddress:'Alamat', waNote:'Nota', waItems:'ITEM PESANAN',
     waTotal:'JUMLAH', waThanks:'Sila sahkan pesanan saya. Terima kasih!',
     copyOrder:'Salin Teks', toastCopied:'Teks pesanan disalin! 📋',
+    variantLabel:'Pilih Perisa / Pilihan', variantConfirm:'Tambah ke Pesanan',
+    variantHint:'Pilih perisa',
     pdfOrderList:'Senarai Pesanan', pdfCustSection:'MAKLUMAT PELANGGAN',
     pdfItem:'Kuih', pdfPrice:'Harga/unit', pdfQty:'Kuantiti', pdfSub:'Subtotal',
     pdfTotal:'JUMLAH', pdfFooter:'Terima kasih kerana memesan! Pesanan akan disahkan melalui WhatsApp.',
@@ -304,6 +392,8 @@ const I18N = {
     waAddress:'Address', waNote:'Notes', waItems:'ORDER ITEMS',
     waTotal:'TOTAL', waThanks:'Please confirm my order. Thank you!',
     copyOrder:'Copy Text', toastCopied:'Order text copied! 📋',
+    variantLabel:'Choose Flavour / Option', variantConfirm:'Add to Order',
+    variantHint:'Select flavour',
     pdfOrderList:'Order List', pdfCustSection:'CUSTOMER INFORMATION',
     pdfItem:'Item', pdfPrice:'Price/unit', pdfQty:'Qty', pdfSub:'Subtotal',
     pdfTotal:'TOTAL', pdfFooter:'Thank you for your order! We will confirm via WhatsApp.',
@@ -334,6 +424,8 @@ const I18N = {
     waAddress:'地址', waNote:'备注', waItems:'订购糕点',
     waTotal:'总计', waThanks:'请确认我的订单，谢谢！',
     copyOrder:'复制文字', toastCopied:'订单文字已复制！📋',
+    variantLabel:'选择口味 / 选项', variantConfirm:'加入订单',
+    variantHint:'选择口味',
     pdfOrderList:'订单列表', pdfCustSection:'顾客资料',
     pdfItem:'糕点名称', pdfPrice:'单价', pdfQty:'数量', pdfSub:'小计',
     pdfTotal:'总计', pdfFooter:'感谢您的订购！我们将通过 WhatsApp 确认您的订单。',
@@ -356,6 +448,7 @@ function setLang(lang) {
     const k = el.getAttribute('data-i18n-ph');
     if (t[k]) el.placeholder = t[k];
   });
+  renderProducts(); // re-render so variant button text updates
   updateCartBar();
 }
 
@@ -365,56 +458,200 @@ function setLang(lang) {
 //  img: use a real photo URL, or leave as '' for emoji fallback.
 // ═══════════════════════════════════════════════
 const PRODUCTS = [
-  { id:1, emoji:'🟢', name:'Kuih Ketayap',  desc:'Lapisan pandan & pulut putih',    price:1.20, unit:'sepotong / piece / 一块',      img:'ketayap_kuih.jpeg' },
-  { id:2, emoji:'🩷', name:'Kuih Piring',       desc:'Lapisan warna-warni yang cantik', price:1.20, unit:'sepotong / piece / 一块',      img:'kuih_piring.jpeg' },
-  { id:3, emoji:'🟤', name:'Pulut Panggang',        desc:'Bola pandan isi gula melaka',     price:1.20, unit:'sepotong / piece / 一块',   img:'https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=500&q=80' },
-  { id:4, emoji:'🤍', name:'Heipan',    desc:'Pulut biru dengan kaya',          price:1.20, unit:'sepotong / piece / 一块',      img:'heipan.jpeg' },
-  { id:6, emoji:'🟠', name:'Mini Heipan / Angku',     desc:'Garing, ringan & harum',          price:1.20, unit:'sekotak / pac / 一盒', img:'mini_heipan_mini_angku.jpeg' },
-  { id:7, emoji:'🩵', name:'Ondeh-Ondeh',       desc:'Lapisan pandan & santan',         price:1.20, unit:'sekotak / pac / 一盒',      img:'https://images.unsplash.com/photo-1565299507177-b0ac66763828?w=500&q=80' },
-  { id:8, emoji:'🟣', name:'Nuomici',        desc:'Dibungkus daun pisang',           price:1.20, unit:'sepotong / piece / 一块',   img:'Nuomici.jpeg' },
-  { id:9, emoji:'🟣', name:'Malaiko',        desc:'Dibungkus daun pisang',           price:1.20, unit:'sepotong / piece / 一块',   img:'Malaiko.jpeg' },
-  { id:10, emoji:'🟣', name:'Angku',        desc:'Dibungkus daun pisang',           price:1.20, unit:'sepotong / piece / 一块',   img:'angku.jpeg' },
-
+  { id:1,  emoji:'🟢', name:'Kuih Ketayap',       desc:'Monthly Sold 1k+',    price:1.20, unit:'piece', img:'ketayap_kuih.jpeg' },
+  { id:2,  emoji:'🩷', name:'Kuih Piring',         desc:'Monthly Sold 800+', price:1.20, unit:'piece', img:'kuih_piring.jpeg' },
+  { id:3,  emoji:'🟤', name:'Pulut Panggang',      desc:'Monthly Sold 600+',          price:1.20, unit:'piece', img:'pulut_panggang.png' },
+  { id:4,  emoji:'🤍', name:'Heipan',              desc:'Monthly Sold 500+',              price:1.20, unit:'piece', img:'heipan.jpeg' },
+  { id:6,  emoji:'🟠', name:'Mini Heipan / Angku', desc:'Monthly Sold 1.5k+',        price:2.60, unit:'pack',    img:'mini_heipan_mini_angku.jpeg',
+    variants:['Mini Heipan - 4 pcs 1 box','Mini Angku - 3 pcs 1 box'] },
+  { id:7,  emoji:'🩵', name:'Ondeh-Ondeh',         desc:'Monthly Sold 2k+',   price:2.60, unit:'pack (6 biji)',    img:'ondeh-ondeh.png'},
+  { id:8,  emoji:'🟣', name:'Nuomici',             desc:'Monthly Sold 700+',             price:1.20, unit:'piece', img:'Nuomici.jpeg'},
+  { id:9,  emoji:'🟣', name:'Malaiko',             desc:'Monthly Sold 400+',           price:1.20, unit:'piece', img:'Malaiko.jpeg' },
+  { id:10, emoji:'🟣', name:'Angku',               desc:'Monthly Sold 1.9k+',     price:1.20, unit:'piece', img:'angku.jpeg',
+    variants:['Kacang Hijau - Manis','Kacang Hijau - Masin','Kacang Merah','Kelapa','Kacang Tanah'] },
+  { id:11,  emoji:'🟣', name:'Koci santan',             desc:'Monthly Sold 500+',           price:1.20, unit:'piece', img:'koci-santan.png' },
+  { id:12,  emoji:'🟣', name:'Koci',             desc:'Monthly Sold 300+',           price:1.20, unit:'piece', img:'koci.png' },
+  { id:13,  emoji:'🟣', name:'黄糖糕 (Kuih Bakul Gula Merah)',             desc:'Monthly Sold 1k+',           price:1.20, unit:'piece', img:'yellow-kuih.png' },
+  { id:14,  emoji:'🟣', name:'白糖糕 (Kuih Putih Gula)',             desc:'Monthly Sold 1k+',           price:1.20, unit:'piece', img:'white-kuih.png' },
+  { id:15,  emoji:'🟣', name:'Kuih Talam',             desc:'Monthly Sold 1.5k+',           price:1.20, unit:'piece', img:'kuih-talam.png' },
+  { id:16,  emoji:'🟣', name:'Kuih Lapis',             desc:'Monthly Sold 1.2k+',           price:1.20, unit:'piece', img:'lapis.png' ,
+    variants:['Black Sesame','Kacang Merah','Jagung'] },
+  { id:17,  emoji:'🟣', name:'Seri muka',             desc:'Monthly Sold 1k+',           price:1.20, unit:'piece', img:'serimuka.png' },
+  { id:18,  emoji:'🟣', name:'Pulut inti',             desc:'Monthly Sold 300+',           price:1.20, unit:'piece', img:'Pulut-inti.png' },
 ];
 
-const WHATSAPP_NUMBER = '60162510618'; // ← TUKAR KE NOMBOR ANDA
+const WHATSAPP_NUMBER = '60162510618';
 
+// cart:
+//   no variants  → cart[id] = qty (number)
+//   with variants → cart[id] = { variantName: qty, ... }  
 const cart = {};
 
+// ── Modal state ──
+let modalProductId = null;
+let modalTemp = {}; // { variantName: qty } while modal open
+
+// ══════════════════════════════════════════════
+//  RENDER PRODUCTS
+// ══════════════════════════════════════════════
 function renderProducts() {
-  document.getElementById('productsGrid').innerHTML = PRODUCTS.map(p => `
-    <div class="product-card ${cart[p.id]?'selected':''}" id="card-${p.id}">
+  document.getElementById('productsGrid').innerHTML = PRODUCTS.map(p => {
+    const hasV  = !!(p.variants && p.variants.length);
+    const isSel = isProductSelected(p.id);
+    const qtyControls = hasV ? '' : `
+      <div class="qty-row">
+        <button class="qty-btn" onclick="changeQty(${p.id},-1)">−</button>
+        <span class="qty-val" id="qty-${p.id}">${cart[p.id]||0}</span>
+        <button class="qty-btn" onclick="changeQty(${p.id},1)">+</button>
+      </div>`;
+    const varBadge   = hasV ? `<div class="variant-badge">${I18N[currentLang].variantHint||'Pilih Perisa'}</div>` : '';
+    const varSummary = (hasV && isSel) ? `<div class="card-variant-summary">${getVariantSummary(p.id)}</div>` : '';
+    const varBtn = hasV ? `<div style="margin-top:9px"><button class="var-select-btn" onclick="event.stopPropagation();openModal(${p.id})">+ ${I18N[currentLang].variantHint||'Pilih Perisa'}</button></div>` : '';
+    return `
+    <div class="product-card ${isSel?'selected':''}" id="card-${p.id}">
       <div class="card-img-wrap">
-        ${p.img
-          ? `<img src="${p.img}" alt="${p.name}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
-          : ''}
+        ${p.img?`<img src="${p.img}" alt="${p.name}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">` : ''}
         <div class="img-fallback" style="${p.img?'':'display:flex'}">${p.emoji}</div>
       </div>
       <div class="card-body">
+        ${varBadge}
         <div class="card-name">${p.name}</div>
         <div class="card-desc">${p.desc}</div>
         <div class="card-price">RM ${p.price.toFixed(2)} <span class="card-unit">/ ${p.unit}</span></div>
-        <div class="qty-row">
-          <button class="qty-btn" onclick="changeQty(${p.id},-1)">−</button>
-          <span class="qty-val" id="qty-${p.id}">${cart[p.id]||0}</span>
-          <button class="qty-btn" onclick="changeQty(${p.id},1)">+</button>
-        </div>
+        ${varSummary}
+        ${qtyControls}
+        ${varBtn}
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
+}
+
+function isProductSelected(id) {
+  const p = PRODUCTS.find(x => x.id == id);
+  if (!p) return false;
+  if (p.variants) { const v=cart[id]; return v && Object.values(v).some(q=>q>0); }
+  return (cart[id]||0) > 0;
+}
+
+function getVariantSummary(id) {
+  const v = cart[id];
+  if (!v) return '';
+  return Object.entries(v).filter(([,q])=>q>0).map(([n,q])=>`${n} ×${q}`).join(', ');
 }
 
 function changeQty(id, delta) {
   const next = Math.max(0, (cart[id]||0) + delta);
-  if (next === 0) delete cart[id]; else cart[id] = next;
+  if (next===0) delete cart[id]; else cart[id]=next;
   document.getElementById(`qty-${id}`).textContent = next;
-  document.getElementById(`card-${id}`).classList.toggle('selected', next > 0);
+  document.getElementById(`card-${id}`).classList.toggle('selected', next>0);
   updateCartBar();
 }
 
 function getTotal() {
-  return Object.entries(cart).reduce((s,[id,q])=>{
-    const p=PRODUCTS.find(x=>x.id==id); return s+(p?p.price*q:0);
+  return Object.entries(cart).reduce((s,[id,val])=>{
+    const p = PRODUCTS.find(x=>x.id==id);
+    if (!p) return s;
+    if (typeof val === 'object') {
+      return s + Object.values(val).reduce((a,q)=>a+q,0) * p.price;
+    }
+    return s + val * p.price;
   },0);
+}
+
+// ══════════════════════════════════════════════
+//  VARIANT MODAL
+// ══════════════════════════════════════════════
+function openModal(id) {
+  const p = PRODUCTS.find(x=>x.id==id);
+  if (!p) return;
+  modalProductId = id;
+  modalTemp = cart[id] ? {...cart[id]} : {};
+
+  document.getElementById('modalName').textContent  = p.name;
+  document.getElementById('modalPrice').textContent = `RM ${p.price.toFixed(2)} / ${p.unit}`;
+  const imgEl = document.getElementById('modalImg');
+  imgEl.src = p.img||''; imgEl.style.display='';
+  imgEl.onerror = ()=>{ imgEl.style.display='none'; };
+
+  document.querySelector('.modal-label').textContent = I18N[currentLang].variantLabel||'Pilih Perisa';
+  document.getElementById('modalConfirmBtn').textContent = I18N[currentLang].variantConfirm||'Tambah ke Pesanan';
+
+  document.getElementById('modalVariants').innerHTML = p.variants.map(v => {
+    const safeId = v.replace(/[^a-zA-Z0-9]/g,'_');
+    const qty = modalTemp[v]||0;
+    const chk = qty>0;
+    return `
+    <div class="variant-row">
+      <div class="var-check" onclick="toggleVariant('${v.replace(/'/g,"\\'")}')">
+        <div class="var-check-box ${chk?'checked':''}" id="vcbox-${safeId}"></div>
+      </div>
+      <span class="variant-label" onclick="toggleVariant('${v.replace(/'/g,"\\'")}')">
+        ${v}
+      </span>
+      <div class="var-qty-row ${chk?'':'disabled'}" id="vqty-${safeId}">
+        <button class="var-qty-btn" onclick="event.stopPropagation();changeVarQty('${v.replace(/'/g,"\\'")}', -1)">−</button>
+        <span class="var-qty-val" id="vqtyval-${safeId}">${qty||1}</span>
+        <button class="var-qty-btn" onclick="event.stopPropagation();changeVarQty('${v.replace(/'/g,"\\'")}', 1)">+</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Paint checked boxes
+  p.variants.forEach(v => {
+    const safeId = v.replace(/[^a-zA-Z0-9]/g,'_');
+    const box = document.getElementById(`vcbox-${safeId}`);
+    if (box && (modalTemp[v]||0)>0) box.classList.add('checked');
+  });
+
+  document.getElementById('variantModal').classList.add('open');
+  updateModalConfirm();
+}
+
+function toggleVariant(v) {
+  const safeId = v.replace(/[^a-zA-Z0-9]/g,'_');
+  const box    = document.getElementById(`vcbox-${safeId}`);
+  const qtyRow = document.getElementById(`vqty-${safeId}`);
+  const isOn   = (modalTemp[v]||0) > 0;
+  if (isOn) {
+    delete modalTemp[v];
+    if(box) box.classList.remove('checked');
+    if(qtyRow) qtyRow.classList.add('disabled');
+  } else {
+    modalTemp[v] = 1;
+    document.getElementById(`vqtyval-${safeId}`).textContent = 1;
+    if(box) box.classList.add('checked');
+    if(qtyRow) qtyRow.classList.remove('disabled');
+  }
+  updateModalConfirm();
+}
+
+function changeVarQty(v, delta) {
+  const safeId = v.replace(/[^a-zA-Z0-9]/g,'_');
+  modalTemp[v] = Math.max(1, (modalTemp[v]||1) + delta);
+  document.getElementById(`vqtyval-${safeId}`).textContent = modalTemp[v];
+}
+
+function updateModalConfirm() {
+  document.getElementById('modalConfirmBtn').disabled = Object.keys(modalTemp).length===0;
+}
+
+function confirmVariants() {
+  if (!modalProductId) return;
+  const cleaned = {};
+  Object.entries(modalTemp).forEach(([v,q])=>{ if(q>0) cleaned[v]=q; });
+  if (Object.keys(cleaned).length===0) delete cart[modalProductId];
+  else cart[modalProductId] = cleaned;
+  closeModal();
+  renderProducts();
+  updateCartBar();
+}
+
+function closeModal() {
+  document.getElementById('variantModal').classList.remove('open');
+  modalProductId = null; modalTemp = {};
+}
+function closeModalOutside(e) {
+  if (e.target===document.getElementById('variantModal')) closeModal();
 }
 
 function updateCartBar() {
@@ -453,13 +690,27 @@ function goToChecklist() {
   document.getElementById('ckNoteRow').style.display = note?'':'none';
   document.getElementById('ckNote').textContent = note;
 
-  document.getElementById('ckItems').innerHTML = Object.entries(cart).map(([id,qty])=>{
+  document.getElementById('ckItems').innerHTML = Object.entries(cart).map(([id,val])=>{
     const p=PRODUCTS.find(x=>x.id==id);
+    if (!p) return '';
+    if (typeof val === 'object') {
+      // variant product — one row per variant
+      return Object.entries(val).filter(([,q])=>q>0).map(([vname,qty])=>`
+        <div class="item-row">
+          <img class="item-thumb" src="${p.img||''}" alt="${p.name}" onerror="this.style.display='none'">
+          <div class="item-name-wrap">
+            <div class="item-name">${p.name}</div>
+            <div class="item-unit" style="color:var(--terracotta);font-weight:500">${vname}</div>
+          </div>
+          <span class="item-qty">×${qty}</span>
+          <span class="item-subtotal">RM ${(p.price*qty).toFixed(2)}</span>
+        </div>`).join('');
+    }
     return `<div class="item-row">
       <img class="item-thumb" src="${p.img||''}" alt="${p.name}" onerror="this.style.display='none'">
       <div class="item-name-wrap"><div class="item-name">${p.name}</div><div class="item-unit">${p.unit}</div></div>
-      <span class="item-qty">x${qty}</span>
-      <span class="item-subtotal">RM ${(p.price*qty).toFixed(2)}</span>
+      <span class="item-qty">×${val}</span>
+      <span class="item-subtotal">RM ${(p.price*val).toFixed(2)}</span>
     </div>`;
   }).join('');
   document.getElementById('ckTotal').textContent = `RM ${getTotal().toFixed(2)}`;
@@ -540,32 +791,35 @@ function downloadPDF() {
 
   // Table rows — numbered
   let rowNum = 1;
-  Object.entries(cart).forEach(([id,qty]) => {
+  Object.entries(cart).forEach(([id,val]) => {
     const p = PRODUCTS.find(x => x.id == id);
-    const isAlt = rowNum % 2 === 0;
-    if (isAlt) { doc.setFillColor(253,246,236); doc.rect(14, y-5, 182, ROW_H, 'F'); }
+    if (!p) return;
 
-    // Row number
-    doc.setTextColor(180,130,70); doc.setFont('helvetica','bold'); doc.setFontSize(8.5);
-    doc.text(String(rowNum), COL.no+1, y);
+    const renderRow = (label, qty) => {
+      const isAlt = rowNum % 2 === 0;
+      if (isAlt) { doc.setFillColor(253,246,236); doc.rect(14, y-5, 182, ROW_H, 'F'); }
+      doc.setTextColor(180,130,70); doc.setFont('helvetica','bold'); doc.setFontSize(8.5);
+      doc.text(String(rowNum), COL.no+1, y);
+      doc.setTextColor(40,20,5); doc.setFont('helvetica','normal'); doc.setFontSize(10);
+      doc.text(label, COL.name, y);
+      const shortUnit = p.unit.split('/').slice(0,2).map(s=>s.trim()).join(' / ');
+      doc.setFontSize(7.5); doc.setTextColor(160,110,60);
+      doc.text(shortUnit, COL.name, y+5);
+      doc.setTextColor(40,20,5); doc.setFont('helvetica','normal'); doc.setFontSize(10);
+      doc.text('RM '+p.price.toFixed(2), COL.price, y, {align:'right'});
+      doc.text('x'+qty, COL.qty, y, {align:'right'});
+      doc.setFont('helvetica','bold');
+      doc.text('RM '+(p.price*qty).toFixed(2), COL.sub, y, {align:'right'});
+      y += ROW_H; rowNum++;
+    };
 
-    // Item name
-    doc.setTextColor(40,20,5); doc.setFont('helvetica','normal'); doc.setFontSize(10);
-    doc.text(p.name, COL.name, y);
-
-    // Unit (short, Latin only)
-    const shortUnit = p.unit.split('/').slice(0,2).map(s=>s.trim()).join(' / ');
-    doc.setFontSize(7.5); doc.setTextColor(160,110,60);
-    doc.text(shortUnit, COL.name, y+5);
-
-    // Price, Qty, Subtotal
-    doc.setTextColor(40,20,5); doc.setFont('helvetica','normal'); doc.setFontSize(10);
-    doc.text('RM '+p.price.toFixed(2), COL.price, y, {align:'right'});
-    doc.text('x'+qty,                  COL.qty,   y, {align:'right'});
-    doc.setFont('helvetica','bold');
-    doc.text('RM '+(p.price*qty).toFixed(2), COL.sub, y, {align:'right'});
-
-    y += ROW_H; rowNum++;
+    if (typeof val === 'object') {
+      Object.entries(val).filter(([,q])=>q>0).forEach(([vname,qty]) => {
+        renderRow(`${p.name} - ${vname}`, qty);
+      });
+    } else {
+      renderRow(p.name, val);
+    }
   });
 
   // ── Total row ──
@@ -606,10 +860,18 @@ function buildOrderText() {
   msg += `\n──────────────────\n`;
   msg += `*${t.waItems}:*\n`;
   let i = 1;
-  Object.entries(cart).forEach(([id,qty]) => {
+  Object.entries(cart).forEach(([id,val]) => {
     const p = PRODUCTS.find(x => x.id == id);
-    msg += `${i}. ${p.name} x${qty}  =  RM ${(p.price*qty).toFixed(2)}\n`;
-    i++;
+    if (!p) return;
+    if (typeof val === 'object') {
+      Object.entries(val).filter(([,q])=>q>0).forEach(([vname,qty]) => {
+        msg += `${i}. ${p.name} (${vname}) ×${qty}  =  RM ${(p.price*qty).toFixed(2)}\n`;
+        i++;
+      });
+    } else {
+      msg += `${i}. ${p.name} ×${val}  =  RM ${(p.price*val).toFixed(2)}\n`;
+      i++;
+    }
   });
   msg += `──────────────────\n`;
   msg += `*${t.waTotal}: RM ${getTotal().toFixed(2)}*\n\n`;
@@ -650,4 +912,3 @@ document.getElementById('custDate').min = new Date().toISOString().split('T')[0]
 </script>
 </body>
 </html>
-
