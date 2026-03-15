@@ -196,6 +196,17 @@
   .var-qty-row.disabled { opacity:.35; pointer-events:none; }
 
   .modal-footer { padding:14px 18px; border-top:1px solid var(--warm); background:#fff; }
+
+  /* Remove button in modal */
+  .modal-remove-btn {
+    display:none; width:100%; padding:12px; border-radius:50px;
+    border:2px solid #e8c4a0; background:transparent;
+    color:var(--deep); font-family:'DM Sans',sans-serif;
+    font-size:14px; font-weight:600; cursor:pointer;
+    margin-bottom:9px; transition:all .2s; text-align:center;
+  }
+  .modal-remove-btn:hover { background:#fdf0e6; border-color:var(--terracotta); color:var(--terracotta); }
+
   .modal-confirm-btn { width:100%; padding:14px; border-radius:50px; border:none; background:var(--terracotta); color:#fff; font-family:'DM Sans',sans-serif; font-size:15px; font-weight:600; cursor:pointer; transition:background .2s; }
   .modal-confirm-btn:hover { background:var(--deep); }
   .modal-confirm-btn:disabled { opacity:.4; cursor:not-allowed; }
@@ -324,6 +335,8 @@
     <div class="modal-label" data-i18n="variantLabel">Pilih Perisa / Flavour</div>
     <div class="modal-body" id="modalVariants"></div>
     <div class="modal-footer">
+      <!-- ✅ FIX: Remove button — only shows when product already in cart -->
+      <button class="modal-remove-btn" id="modalRemoveBtn" onclick="removeVariantProduct()">🗑 <span id="modalRemoveText">Buang dari Pesanan</span></button>
       <button class="modal-confirm-btn" id="modalConfirmBtn" onclick="confirmVariants()" data-i18n="variantConfirm">Tambah ke Pesanan</button>
     </div>
   </div>
@@ -362,7 +375,9 @@ const I18N = {
     waTotal:'JUMLAH', waThanks:'Sila sahkan pesanan saya. Terima kasih!',
     copyOrder:'Salin Teks', toastCopied:'Teks pesanan disalin! 📋',
     variantLabel:'Pilih Perisa / Pilihan', variantConfirm:'Tambah ke Pesanan',
-    variantHint:'Pilih perisa',
+    variantHint:'Pilih Perisa',
+    variantRemove:'Buang dari Pesanan', variantClear:'✓ Kosongkan Pilihan',
+    toastRemoved:'Item dibuang dari pesanan 🗑',
     pdfOrderList:'Senarai Pesanan', pdfCustSection:'MAKLUMAT PELANGGAN',
     pdfItem:'Kuih', pdfPrice:'Harga/unit', pdfQty:'Kuantiti', pdfSub:'Subtotal',
     pdfTotal:'JUMLAH', pdfFooter:'Terima kasih kerana memesan! Pesanan akan disahkan melalui WhatsApp.',
@@ -395,6 +410,8 @@ const I18N = {
     copyOrder:'Copy Text', toastCopied:'Order text copied! 📋',
     variantLabel:'Choose Flavour / Option', variantConfirm:'Add to Order',
     variantHint:'Select flavour',
+    variantRemove:'Remove from Order', variantClear:'✓ Clear Selection',
+    toastRemoved:'Item removed from order 🗑',
     pdfOrderList:'Order List', pdfCustSection:'CUSTOMER INFORMATION',
     pdfItem:'Item', pdfPrice:'Price/unit', pdfQty:'Qty', pdfSub:'Subtotal',
     pdfTotal:'TOTAL', pdfFooter:'Thank you for your order! We will confirm via WhatsApp.',
@@ -427,6 +444,8 @@ const I18N = {
     copyOrder:'复制文字', toastCopied:'订单文字已复制！📋',
     variantLabel:'选择口味 / 选项', variantConfirm:'加入订单',
     variantHint:'选择口味',
+    variantRemove:'从订单中移除', variantClear:'✓ 清空选择',
+    toastRemoved:'已从订单中移除 🗑',
     pdfOrderList:'订单列表', pdfCustSection:'顾客资料',
     pdfItem:'糕点名称', pdfPrice:'单价', pdfQty:'数量', pdfSub:'小计',
     pdfTotal:'总计', pdfFooter:'感谢您的订购！我们将通过 WhatsApp 确认您的订单。',
@@ -449,14 +468,12 @@ function setLang(lang) {
     const k = el.getAttribute('data-i18n-ph');
     if (t[k]) el.placeholder = t[k];
   });
-  renderProducts(); // re-render so variant button text updates
+  renderProducts();
   updateCartBar();
 }
 
 // ═══════════════════════════════════════════════
 //  PRODUCTS
-//  To add a product: copy one block, change the fields.
-//  img: use a real photo URL, or leave as '' for emoji fallback.
 // ═══════════════════════════════════════════════
 const PRODUCTS = [
   { id:1,  emoji:'🟢', name:'Kuih Ketayap',       desc:'Monthly Sold 1k+',    price:1.20, unit:'piece', img:'ketayap_kuih.jpeg' },
@@ -475,7 +492,7 @@ const PRODUCTS = [
   { id:13,  emoji:'🟣', name:'黄糖糕 (Kuih Bakul Gula Merah)',             desc:'Monthly Sold 1k+',           price:1.20, unit:'piece', img:'yellow-kuih.png' },
   { id:14,  emoji:'🟣', name:'白糖糕 (Kuih Putih Gula)',             desc:'Monthly Sold 1k+',           price:1.20, unit:'piece', img:'white-kuih.png' },
   { id:15,  emoji:'🟣', name:'Kuih Talam',             desc:'Monthly Sold 1.5k+',           price:1.20, unit:'piece', img:'kuih-talam.png' },
-  { id:16,  emoji:'🟣', name:'Kuih Lapis',             desc:'Monthly Sold 1.2k+',           price:1.20, unit:'piece', img:'lapis.png' ,
+  { id:16,  emoji:'🟣', name:'Kuih Lapis',             desc:'Monthly Sold 1.2k+',           price:1.20, unit:'piece', img:'lapis.png',
     variants:['Black Sesame','Kacang Merah','Jagung'] },
   { id:17,  emoji:'🟣', name:'Seri muka',             desc:'Monthly Sold 1k+',           price:1.20, unit:'piece', img:'serimuka.png' },
   { id:18,  emoji:'🟣', name:'Pulut inti',             desc:'Monthly Sold 300+',           price:1.20, unit:'piece', img:'Pulut-inti-2.png' },
@@ -485,12 +502,12 @@ const WHATSAPP_NUMBER = '60162510618';
 
 // cart:
 //   no variants  → cart[id] = qty (number)
-//   with variants → cart[id] = { variantName: qty, ... }  
+//   with variants → cart[id] = { variantName: qty, ... }
 const cart = {};
 
 // ── Modal state ──
 let modalProductId = null;
-let modalTemp = {}; // { variantName: qty } while modal open
+let modalTemp = {};
 
 // ══════════════════════════════════════════════
 //  RENDER PRODUCTS
@@ -575,7 +592,6 @@ function openModal(id) {
   imgEl.onerror = ()=>{ imgEl.style.display='none'; };
 
   document.querySelector('.modal-label').textContent = I18N[currentLang].variantLabel||'Pilih Perisa';
-  document.getElementById('modalConfirmBtn').textContent = I18N[currentLang].variantConfirm||'Tambah ke Pesanan';
 
   document.getElementById('modalVariants').innerHTML = p.variants.map(v => {
     const safeId = v.replace(/[^a-zA-Z0-9]/g,'_');
@@ -597,12 +613,18 @@ function openModal(id) {
     </div>`;
   }).join('');
 
-  // Paint checked boxes
   p.variants.forEach(v => {
     const safeId = v.replace(/[^a-zA-Z0-9]/g,'_');
     const box = document.getElementById(`vcbox-${safeId}`);
     if (box && (modalTemp[v]||0)>0) box.classList.add('checked');
   });
+
+  // ✅ FIX: Show remove button only if this product already exists in cart
+  const alreadyInCart = cart[id] && Object.values(cart[id]).some(q => q > 0);
+  const removeBtn = document.getElementById('modalRemoveBtn');
+  const removeText = document.getElementById('modalRemoveText');
+  removeBtn.style.display = alreadyInCart ? 'block' : 'none';
+  removeText.textContent = I18N[currentLang].variantRemove || 'Buang dari Pesanan';
 
   document.getElementById('variantModal').classList.add('open');
   updateModalConfirm();
@@ -632,19 +654,52 @@ function changeVarQty(v, delta) {
   document.getElementById(`vqtyval-${safeId}`).textContent = modalTemp[v];
 }
 
+// ✅ FIX: Updated to handle empty selection (clear) case
 function updateModalConfirm() {
-  document.getElementById('modalConfirmBtn').disabled = Object.keys(modalTemp).length===0;
+  const t = I18N[currentLang];
+  const hasItems = Object.values(modalTemp).some(q => q > 0);
+  const confirmBtn = document.getElementById('modalConfirmBtn');
+  confirmBtn.disabled = false;
+  if (hasItems) {
+    confirmBtn.textContent = t.variantConfirm || 'Tambah ke Pesanan';
+    confirmBtn.style.background = 'var(--terracotta)';
+  } else {
+    // If product was previously in cart and user deselects all — allow clearing
+    const alreadyInCart = modalProductId && cart[modalProductId] && Object.values(cart[modalProductId]).some(q => q > 0);
+    if (alreadyInCart) {
+      confirmBtn.textContent = t.variantClear || '✓ Kosongkan Pilihan';
+      confirmBtn.style.background = '#a0856a';
+    } else {
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = t.variantConfirm || 'Tambah ke Pesanan';
+      confirmBtn.style.background = 'var(--terracotta)';
+    }
+  }
 }
 
 function confirmVariants() {
   if (!modalProductId) return;
   const cleaned = {};
   Object.entries(modalTemp).forEach(([v,q])=>{ if(q>0) cleaned[v]=q; });
-  if (Object.keys(cleaned).length===0) delete cart[modalProductId];
-  else cart[modalProductId] = cleaned;
+  if (Object.keys(cleaned).length===0) {
+    // ✅ FIX: Empty selection = remove from cart
+    delete cart[modalProductId];
+  } else {
+    cart[modalProductId] = cleaned;
+  }
   closeModal();
   renderProducts();
   updateCartBar();
+}
+
+// ✅ FIX: New function — directly remove variant product from cart
+function removeVariantProduct() {
+  if (!modalProductId) return;
+  delete cart[modalProductId];
+  closeModal();
+  renderProducts();
+  updateCartBar();
+  showToast(I18N[currentLang].toastRemoved || 'Item dibuang dari pesanan 🗑');
 }
 
 function closeModal() {
@@ -668,7 +723,6 @@ function goToPage(n) {
   document.querySelectorAll('.step').forEach((s,i)=>{
     s.classList.toggle('active',i===n-1); s.classList.toggle('done',i<n-1);
   });
-  // Show cart bar only on page 1
   document.getElementById('cartBar').style.display = n===1 ? 'flex' : 'none';
   window.scrollTo({top:0,behavior:'smooth'});
 }
@@ -695,7 +749,6 @@ function goToChecklist() {
     const p=PRODUCTS.find(x=>x.id==id);
     if (!p) return '';
     if (typeof val === 'object') {
-      // variant product — one row per variant
       return Object.entries(val).filter(([,q])=>q>0).map(([vname,qty])=>`
         <div class="item-row">
           <img class="item-thumb" src="${p.img||''}" alt="${p.name}" onerror="this.style.display='none'">
@@ -746,7 +799,6 @@ function downloadPDF() {
   const orderNum= (rawNum.match(/NYK-\d+/) || [rawNum])[0];
   const pdfDate = date ? (([y,m,d])=>`${d} ${PDF_MONTHS[parseInt(m)-1]} ${y}`)(date.split('-')) : '-';
 
-  // ── Header ──
   doc.setFillColor(61,31,10); doc.rect(0,0,210,42,'F');
   doc.setTextColor(245,230,204); doc.setFontSize(24); doc.setFont('times','bolditalic');
   doc.text('Nyonya Kuih', 105, 18, {align:'center'});
@@ -754,7 +806,6 @@ function downloadPDF() {
   doc.setTextColor(196,122,58); doc.text(PDF.orderList, 105, 28, {align:'center'});
   doc.setTextColor(190,165,135); doc.text(`${PDF.orderNo}: ${orderNum}`, 105, 36, {align:'center'});
 
-  // ── Customer Info ──
   let y = 54;
   doc.setFillColor(253,246,236); doc.roundedRect(14, y-6, 182, 58, 3, 3, 'F');
   doc.setFontSize(8.5); doc.setTextColor(196,122,58); doc.setFont('helvetica','bold');
@@ -774,13 +825,10 @@ function downloadPDF() {
     y += 7 * lines.length;
   });
 
-  // ── Items Table ──
   y += 8;
-  // Column X positions
   const COL = { no:14, name:24, price:112, qty:148, sub:196 };
   const ROW_H = 14;
 
-  // Table header
   doc.setFillColor(61,31,10); doc.roundedRect(14, y-5, 182, 11, 2, 2, 'F');
   doc.setTextColor(245,230,204); doc.setFont('helvetica','bold'); doc.setFontSize(8.5);
   doc.text(PDF.no,       COL.no,    y+2);
@@ -790,7 +838,6 @@ function downloadPDF() {
   doc.text(PDF.sub,      COL.sub,   y+2, {align:'right'});
   y += 13;
 
-  // Table rows — numbered
   let rowNum = 1;
   Object.entries(cart).forEach(([id,val]) => {
     const p = PRODUCTS.find(x => x.id == id);
@@ -823,14 +870,12 @@ function downloadPDF() {
     }
   });
 
-  // ── Total row ──
   doc.setDrawColor(196,122,58); doc.setLineWidth(0.4); doc.line(14, y-2, 196, y-2);
   doc.setFillColor(196,122,58); doc.roundedRect(118, y, 78, 13, 2, 2, 'F');
   doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(11);
   doc.text(PDF.total+':', 125, y+9);
   doc.text('RM '+getTotal().toFixed(2), 192, y+9, {align:'right'});
 
-  // ── Footer ──
   y += 26;
   doc.setFontSize(8); doc.setTextColor(160,110,60); doc.setFont('helvetica','italic');
   doc.text(PDF.footer, 105, y, {align:'center'});
@@ -839,7 +884,6 @@ function downloadPDF() {
   showToast(I18N[currentLang].toastPDF);
 }
 
-// Shared function to build order message text
 function buildOrderText() {
   const t = I18N[currentLang];
   const name    = document.getElementById('custName').value.trim();
@@ -890,7 +934,6 @@ function copyOrder() {
   navigator.clipboard.writeText(msg).then(() => {
     showToast(I18N[currentLang].toastCopied);
   }).catch(() => {
-    // Fallback for older browsers
     const ta = document.createElement('textarea');
     ta.value = msg; ta.style.position='fixed'; ta.style.opacity='0';
     document.body.appendChild(ta); ta.select();
@@ -913,6 +956,3 @@ document.getElementById('custDate').min = new Date().toISOString().split('T')[0]
 </script>
 </body>
 </html>
-
-
-
