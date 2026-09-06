@@ -46,6 +46,28 @@
   .section-title { font-family:'Playfair Display',serif; font-size:21px; padding:22px 18px 3px; color:var(--deep); }
   .section-sub { font-size:12px; color:var(--terracotta); padding:0 18px 14px; }
 
+  /* CATEGORY TABS (Kuih / Drinks) */
+  .category-tabs { display:flex; gap:8px; padding:16px 14px 0; }
+  .category-tab {
+    flex:1; padding:12px 8px; border-radius:14px;
+    border:2px solid var(--blush); background:#fff; color:var(--deep);
+    font-family:'DM Sans',sans-serif; font-size:13.5px; font-weight:600;
+    cursor:pointer; text-align:center; transition:all .2s;
+  }
+  .category-tab.active { background:var(--terracotta); border-color:var(--terracotta); color:#fff; }
+  .category-tab:hover:not(.active) { border-color:var(--terracotta); }
+
+  .category-panel { display:none; }
+  .category-panel.active { display:block; }
+
+  /* BULK PROMO BANNER */
+  .bulk-promo-banner {
+    margin:0 18px 10px; padding:10px 14px; border-radius:12px;
+    background:linear-gradient(135deg,#e8f4ec,#dcefe2);
+    border:1.5px dashed var(--green); color:#2f5c3d;
+    font-size:12px; font-weight:600; text-align:center; line-height:1.4;
+  }
+
   /* PRODUCT GRID */
   .products-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(155px,1fr)); gap:13px; padding:0 14px 90px; }
 
@@ -71,6 +93,9 @@
   .qty-btn { width:27px; height:27px; border-radius:50%; border:none; cursor:pointer; background:var(--warm); color:var(--deep); font-size:17px; font-weight:700; display:flex; align-items:center; justify-content:center; transition:background .2s; }
   .qty-btn:hover { background:var(--blush); }
   .qty-val { font-weight:700; font-size:15px; color:var(--deep); min-width:22px; text-align:center; }
+
+  /* bulk free-qty hint on cards */
+  .bulk-hint { font-size:10.5px; color:var(--green); font-weight:700; margin-top:5px; text-align:right; min-height:14px; }
 
   /* CART BAR — always fixed to bottom of screen */
   .cart-bar { position:fixed; bottom:0; left:0; right:0; z-index:100; background:var(--darkbrown); padding:13px 18px; display:flex; align-items:center; justify-content:space-between; box-shadow:0 -4px 20px rgba(0,0,0,.25); }
@@ -120,6 +145,7 @@
   .item-name { font-size:13.5px; }
   .item-unit { font-size:10.5px; color:#aaa; }
   .item-qty { color:var(--terracotta); font-size:12.5px; margin-left:6px; }
+  .free-tag { color:var(--green); font-weight:700; }
   .item-subtotal { font-weight:600; font-size:13.5px; margin-left:10px; }
 
   .total-row { display:flex; justify-content:space-between; align-items:center; padding:13px 0 0; border-top:2px solid var(--terracotta); margin-top:5px; }
@@ -159,6 +185,7 @@
   .modal-info { flex:1; }
   .modal-name { font-family:'Playfair Display',serif; font-size:18px; color:var(--deep); }
   .modal-price { color:var(--terracotta); font-weight:700; font-size:14px; margin-top:2px; }
+  .modal-bulk-note { font-size:11px; color:var(--green); font-weight:600; margin-top:4px; line-height:1.35; }
   .modal-close { width:32px; height:32px; border-radius:50%; border:none; background:var(--warm); color:var(--deep); font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
 
   .modal-divider { height:1px; background:var(--warm); margin:14px 0 0; }
@@ -189,11 +216,13 @@
   .variant-label small { display:block; font-size:10.5px; color:#aaa; }
 
   /* Qty stepper for each variant */
+  .var-qty-wrap { display:flex; flex-direction:column; align-items:flex-end; gap:2px; }
   .var-qty-row { display:flex; align-items:center; gap:6px; }
   .var-qty-btn { width:26px; height:26px; border-radius:50%; border:none; cursor:pointer; background:var(--warm); color:var(--deep); font-size:16px; font-weight:700; display:flex; align-items:center; justify-content:center; transition:background .15s; }
   .var-qty-btn:hover { background:var(--blush); }
   .var-qty-val { font-weight:700; font-size:14px; color:var(--deep); min-width:20px; text-align:center; }
   .var-qty-row.disabled { opacity:.35; pointer-events:none; }
+  .var-free-hint { font-size:9.5px; color:var(--green); font-weight:700; min-height:12px; }
 
   .modal-footer { padding:14px 18px; border-top:1px solid var(--warm); background:#fff; }
 
@@ -244,9 +273,26 @@
 
 <!-- PAGE 1 -->
 <div class="page active" id="page1">
-  <div class="section-title" data-i18n="p1Title">Pilih Kuih Anda</div>
-  <div class="section-sub" data-i18n="p1Sub">Klik + untuk tambah kuantiti yang dikehendaki</div>
-  <div class="products-grid" id="productsGrid"></div>
+
+  <!-- Category tabs: Kuih / Drinks -->
+  <div class="category-tabs">
+    <button class="category-tab active" id="tabKuih" onclick="switchCategory('kuih')">🧁 <span data-i18n="tabKuih">Kuih</span></button>
+    <button class="category-tab" id="tabDrinks" onclick="switchCategory('drinks')">🥤 <span data-i18n="tabDrinks">Minuman</span></button>
+  </div>
+
+  <div class="category-panel active" id="panelKuih">
+    <div class="section-title" data-i18n="p1Title">Pilih Kuih Anda</div>
+    <div class="section-sub" data-i18n="p1Sub">Klik + untuk tambah kuantiti yang dikehendaki</div>
+    <div class="products-grid" id="productsGrid"></div>
+  </div>
+
+  <div class="category-panel" id="panelDrinks">
+    <div class="section-title" data-i18n="drinksTitle">Pilih Minuman Anda</div>
+    <div class="section-sub" data-i18n="drinksSub">Sesuai untuk tempahan pukal majlis & acara</div>
+    <div class="bulk-promo-banner" id="bulkPromoBanner"></div>
+    <div class="products-grid" id="drinksGrid"></div>
+  </div>
+
 </div>
 
 <!-- PAGE 2 -->
@@ -328,6 +374,7 @@
       <div class="modal-info">
         <div class="modal-name" id="modalName"></div>
         <div class="modal-price" id="modalPrice"></div>
+        <div class="modal-bulk-note" id="modalBulkNote"></div>
       </div>
       <button class="modal-close" onclick="closeModal()">✕</button>
     </div>
@@ -367,12 +414,12 @@ const I18N = {
     grandTotal:'Jumlah Keseluruhan',
     lName2:'Nama', lPhone2:'WhatsApp', lDate2:'Tarikh Hantar', lAddress2:'Alamat', lNote2:'Nota',
     confirmNote:'Sila semak pesanan anda sebelum menghantar. Terima kasih! 🙏',
-    cartNone:'Tiada item dipilih', cartItems:n=>`${n} jenis kuih dipilih`,
+    cartNone:'Tiada item dipilih', cartItems:n=>`${n} jenis dipilih`,
     orderLabel:'No. Pesanan', errFill:'Sila isi semua maklumat yang diperlukan ✏️',
     toastPDF:'PDF berjaya dimuat turun! 📄',
     waHeader:'PESANAN BARU', waName:'Nama', waPhone:'WhatsApp', waDate:'Tarikh Hantar',
     waAddress:'Alamat', waNote:'Nota', waItems:'ITEM PESANAN',
-    waTotal:'JUMLAH', waThanks:'Sila sahkan pesanan saya. Terima kasih!',
+    waTotal:'JUMLAH', waThanks:'Sila sahkan pesanan saya. Terima kasih!', waFree:'percuma',
     copyOrder:'Salin Teks', toastCopied:'Teks pesanan disalin! 📋',
     variantLabel:'Pilih Perisa / Pilihan', variantConfirm:'Tambah ke Pesanan',
     variantHint:'Pilih Perisa',
@@ -382,6 +429,11 @@ const I18N = {
     pdfItem:'Kuih', pdfPrice:'Harga/unit', pdfQty:'Kuantiti', pdfSub:'Subtotal',
     pdfTotal:'JUMLAH', pdfFooter:'Terima kasih kerana memesan! Pesanan akan disahkan melalui WhatsApp.',
     months:['Jan','Feb','Mac','Apr','Mei','Jun','Jul','Ogs','Sep','Okt','Nov','Dis'],
+    // ── Drinks / bulk purchase ──
+    tabKuih:'Kuih', tabDrinks:'Minuman',
+    drinksTitle:'Pilih Minuman Anda', drinksSub:'Sesuai untuk tempahan pukal majlis & acara',
+    bulkPromoBanner:(b,f)=>`🎉 Beli ${b} unit, PERCUMA ${f} unit! Sesuai untuk tempahan pukal majlis & acara.`,
+    freeSuffix:n=>`+${n} percuma`,
   },
   en: {
     badge:'Order Online', tagline:'Traditional kuih made with love 🌿',
@@ -406,7 +458,7 @@ const I18N = {
     toastPDF:'PDF downloaded successfully! 📄',
     waHeader:'NEW ORDER', waName:'Name', waPhone:'WhatsApp', waDate:'Delivery Date',
     waAddress:'Address', waNote:'Notes', waItems:'ORDER ITEMS',
-    waTotal:'TOTAL', waThanks:'Please confirm my order. Thank you!',
+    waTotal:'TOTAL', waThanks:'Please confirm my order. Thank you!', waFree:'free',
     copyOrder:'Copy Text', toastCopied:'Order text copied! 📋',
     variantLabel:'Choose Flavour / Option', variantConfirm:'Add to Order',
     variantHint:'Select flavour',
@@ -416,6 +468,11 @@ const I18N = {
     pdfItem:'Item', pdfPrice:'Price/unit', pdfQty:'Qty', pdfSub:'Subtotal',
     pdfTotal:'TOTAL', pdfFooter:'Thank you for your order! We will confirm via WhatsApp.',
     months:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+    // ── Drinks / bulk purchase ──
+    tabKuih:'Kuih', tabDrinks:'Drinks',
+    drinksTitle:'Choose Your Drinks', drinksSub:'Perfect for bulk orders & events',
+    bulkPromoBanner:(b,f)=>`🎉 Buy ${b} units, get ${f} FREE! Great for bulk event orders.`,
+    freeSuffix:n=>`+${n} free`,
   },
   zh: {
     badge:'在线订购', tagline:'传统娘惹糕点，用爱手工制作 🌿',
@@ -431,16 +488,16 @@ const I18N = {
     notePhone:'我们将通过 WhatsApp 发送确认信息',
     next:'下一步', back:'返回', review:'查看订单',
     edit:'修改', dlPDF:'下载 PDF', sendWA:'发送至 WhatsApp',
-    custInfo:'📋 顾客资料', orderItems:'🧁 订购糕点',
+    custInfo:'📋 顾客资料', orderItems:'🧁 订购项目',
     grandTotal:'总计',
     lName2:'姓名', lPhone2:'WhatsApp', lDate2:'送货日期', lAddress2:'地址', lNote2:'备注',
     confirmNote:'请在发送前确认您的订单。谢谢！🙏',
-    cartNone:'尚未选择任何糕点', cartItems:n=>`已选 ${n} 种糕点`,
+    cartNone:'尚未选择任何项目', cartItems:n=>`已选 ${n} 种`,
     orderLabel:'订单号', errFill:'请填写所有必填项目 ✏️',
     toastPDF:'PDF 下载成功！📄',
     waHeader:'新订单', waName:'姓名', waPhone:'WhatsApp', waDate:'送货日期',
-    waAddress:'地址', waNote:'备注', waItems:'订购糕点',
-    waTotal:'总计', waThanks:'请确认我的订单，谢谢！',
+    waAddress:'地址', waNote:'备注', waItems:'订购项目',
+    waTotal:'总计', waThanks:'请确认我的订单，谢谢！', waFree:'免费',
     copyOrder:'复制文字', toastCopied:'订单文字已复制！📋',
     variantLabel:'选择口味 / 选项', variantConfirm:'加入订单',
     variantHint:'选择口味',
@@ -450,6 +507,11 @@ const I18N = {
     pdfItem:'糕点名称', pdfPrice:'单价', pdfQty:'数量', pdfSub:'小计',
     pdfTotal:'总计', pdfFooter:'感谢您的订购！我们将通过 WhatsApp 确认您的订单。',
     months:['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'],
+    // ── 饮料 / bulk purchase ──
+    tabKuih:'糕点', tabDrinks:'饮料',
+    drinksTitle:'选择您的饮料', drinksSub:'适合活动、宴会大量订购 (bulk order)',
+    bulkPromoBanner:(b,f)=>`🎉 订购 ${b} 杯（罐），即送 ${f} 杯（罐）！适合活动大量订购。`,
+    freeSuffix:n=>`+${n} 免费`,
   }
 };
 
@@ -468,12 +530,28 @@ function setLang(lang) {
     const k = el.getAttribute('data-i18n-ph');
     if (t[k]) el.placeholder = t[k];
   });
-  renderProducts();
+  renderGrid(PRODUCTS, 'productsGrid');
+  renderGrid(DRINKS, 'drinksGrid');
+  renderBulkBanner();
   updateCartBar();
 }
 
 // ═══════════════════════════════════════════════
-//  PRODUCTS
+//  🎉 BULK PURCHASE PROMO SETTINGS (可自行调整!)
+//  buyQty  = 顾客需要购买的数量 (付费数量)
+//  freeQty = 达到 buyQty 之后,免费送的数量
+//  enabled = false 就会完全关闭促销
+//  例如: buyQty:10, freeQty:1  => 订购10杯,免费送1杯 (买20送2,如此类推)
+//  如果某款饮料要用不同的优惠,可以在该产品加 promo:{buyQty:..,freeQty:..}
+// ═══════════════════════════════════════════════
+const BULK_PROMO = {
+  enabled: true,
+  buyQty: 10,
+  freeQty: 1
+};
+
+// ═══════════════════════════════════════════════
+//  PRODUCTS — Kuih (糕点)
 // ═══════════════════════════════════════════════
 const PRODUCTS = [
   { id:1,  emoji:'🟢', name:'Kuih Ketayap',       desc:'Monthly Sold 1k+',    price:1.20, unit:'piece', img:'ketayap_kuih.jpeg' },
@@ -499,6 +577,28 @@ const PRODUCTS = [
   { id:19,  emoji:'🟣', name:'粽子',             desc:'Monthly Sold 500+',           price:9.00, unit:'piece', img:'zong_zi_new.png' },
 ];
 
+// ═══════════════════════════════════════════════
+//  DRINKS — 饮料 (bulk purchase) — 可自行增减 / 改价钱 / 改口味
+//  bulk:true  => 这款饮料享有上面 BULK_PROMO 的优惠 (或自己的 promo)
+//  variants   => 口味/糖度/选项 (没有就删掉这个属性)
+//  想关闭某款饮料的优惠,把 bulk 设成 false 即可
+// ═══════════════════════════════════════════════
+const DRINKS = [
+  { id:'d1', emoji:'🧋', name:'Teh Ice', desc:'Bulk order untuk majlis & acara', price:3.50, unit:'pack', img:'teh-peng.png', bulk:true},
+  { id:'d2', emoji:'🧋', name:'Teh O Ice', desc:'Bulk order untuk majlis & acara', price:3.20, unit:'pack', img:'teh-o-peng.png', bulk:true},  
+  { id:'d3', emoji:'🖤', name:'Kopi Ice', desc:'Bulk order untuk majlis & acara', price:3.50, unit:'pack', img:'kopi-peng.png', bulk:true},
+  { id:'d3', emoji:'🤎', name:'Kopi O Ice', desc:'Bulk order untuk majlis & acara', price:3.20, unit:'pack', img:'kopi-o-peng.png', bulk:true },
+  { id:'d4', emoji:'🌾', name:'Cham Ice', desc:'Bulk order untuk majlis & acara', price:3.80, unit:'pack', img:'cham-peng.png', bulk:true,
+    variants:['Original','Kurang Manis'] },
+  { id:'d5', emoji:'🍫', name:'Milo Ice', desc:'Bulk order untuk majlis & acara', price:3.80, unit:'pack', img:'milo-ice.png', bulk:true,
+    variants:['Original','Kurang Manis'] },
+  { id:'d6', emoji:'🥤', name:'100 Plus (Tin)', desc:'Minuman berkarbonat', price:3.00, unit:'tin', img:'100plus.png', bulk:true },
+  { id:'d7', emoji:'🥤', name:'Coca-Cola (Tin)', desc:'Minuman berkarbonat', price:3.00, unit:'tin', img:'cola.png', bulk:true },
+  { id:'d8', emoji:'🥤', name:'Nescafe Ice', desc:'Bulk order untuk majlis & acara', price:3.80, unit:'pack', img:'nescafe-ice.png', bulk:true },
+  { id:'d9', emoji:'🥤', name:'White Coffee Ice', desc:'Bulk order untuk majlis & acara', price:3.80, unit:'pack', img:'white-coffee-ice.png', bulk:true },  
+  { id:'d10', emoji:'🥤', name:'Red Bull', desc:'Minuman Energy', price:3.50, unit:'tin', img:'Redbull.png', bulk:true },   
+];
+
 const WHATSAPP_NUMBER = '60162510618';
 
 // cart:
@@ -511,21 +611,61 @@ let modalProductId = null;
 let modalTemp = {};
 
 // ══════════════════════════════════════════════
-//  RENDER PRODUCTS
+//  HELPERS — lookup products across both lists, bulk-promo math
 // ══════════════════════════════════════════════
-function renderProducts() {
-  document.getElementById('productsGrid').innerHTML = PRODUCTS.map(p => {
+function findProduct(id) {
+  return PRODUCTS.find(x => x.id == id) || DRINKS.find(x => x.id == id);
+}
+
+function getPromo(p) {
+  if (!p || !p.bulk) return null;
+  const promo = p.promo || BULK_PROMO;
+  return promo.enabled === false ? null : promo;
+}
+
+function calcFree(qty, promo) {
+  if (!promo || !qty) return 0;
+  return Math.floor(qty / promo.buyQty) * promo.freeQty;
+}
+
+function freeHintText(id, promo) {
+  const qty = cart[id] || 0;
+  const free = calcFree(qty, promo);
+  return free > 0 ? I18N[currentLang].freeSuffix(free) : '';
+}
+
+function renderBulkBanner() {
+  const el = document.getElementById('bulkPromoBanner');
+  if (el) el.textContent = I18N[currentLang].bulkPromoBanner(BULK_PROMO.buyQty, BULK_PROMO.freeQty);
+}
+
+function switchCategory(cat) {
+  document.getElementById('tabKuih').classList.toggle('active', cat === 'kuih');
+  document.getElementById('tabDrinks').classList.toggle('active', cat === 'drinks');
+  document.getElementById('panelKuih').classList.toggle('active', cat === 'kuih');
+  document.getElementById('panelDrinks').classList.toggle('active', cat === 'drinks');
+}
+
+// ══════════════════════════════════════════════
+//  RENDER PRODUCT GRID (shared by Kuih & Drinks)
+// ══════════════════════════════════════════════
+function renderGrid(list, gridId) {
+  const grid = document.getElementById(gridId);
+  if (!grid) return;
+  grid.innerHTML = list.map(p => {
     const hasV  = !!(p.variants && p.variants.length);
     const isSel = isProductSelected(p.id);
+    const promo = getPromo(p);
     const qtyControls = hasV ? '' : `
       <div class="qty-row">
-        <button class="qty-btn" onclick="changeQty(${p.id},-1)">−</button>
+        <button class="qty-btn" onclick="changeQty('${p.id}',-1)">−</button>
         <span class="qty-val" id="qty-${p.id}">${cart[p.id]||0}</span>
-        <button class="qty-btn" onclick="changeQty(${p.id},1)">+</button>
-      </div>`;
+        <button class="qty-btn" onclick="changeQty('${p.id}',1)">+</button>
+      </div>
+      ${promo ? `<div class="bulk-hint" id="bulkhint-${p.id}">${freeHintText(p.id,promo)}</div>` : ''}`;
     const varBadge   = hasV ? `<div class="variant-badge">${I18N[currentLang].variantHint||'Pilih Perisa'}</div>` : '';
     const varSummary = (hasV && isSel) ? `<div class="card-variant-summary">${getVariantSummary(p.id)}</div>` : '';
-    const varBtn = hasV ? `<div style="margin-top:9px"><button class="var-select-btn" onclick="event.stopPropagation();openModal(${p.id})">+ ${I18N[currentLang].variantHint||'Pilih Perisa'}</button></div>` : '';
+    const varBtn = hasV ? `<div style="margin-top:9px"><button class="var-select-btn" onclick="event.stopPropagation();openModal('${p.id}')">+ ${I18N[currentLang].variantHint||'Pilih Perisa'}</button></div>` : '';
     return `
     <div class="product-card ${isSel?'selected':''}" id="card-${p.id}">
       <div class="card-img-wrap">
@@ -546,7 +686,7 @@ function renderProducts() {
 }
 
 function isProductSelected(id) {
-  const p = PRODUCTS.find(x => x.id == id);
+  const p = findProduct(id);
   if (!p) return false;
   if (p.variants) { const v=cart[id]; return v && Object.values(v).some(q=>q>0); }
   return (cart[id]||0) > 0;
@@ -555,20 +695,33 @@ function isProductSelected(id) {
 function getVariantSummary(id) {
   const v = cart[id];
   if (!v) return '';
-  return Object.entries(v).filter(([,q])=>q>0).map(([n,q])=>`${n} ×${q}`).join(', ');
+  const p = findProduct(id);
+  const promo = getPromo(p);
+  return Object.entries(v).filter(([,q])=>q>0).map(([n,q])=>{
+    const free = calcFree(q, promo);
+    return free>0 ? `${n} ×${q} (${I18N[currentLang].freeSuffix(free)})` : `${n} ×${q}`;
+  }).join(', ');
 }
 
 function changeQty(id, delta) {
   const next = Math.max(0, (cart[id]||0) + delta);
   if (next===0) delete cart[id]; else cart[id]=next;
-  document.getElementById(`qty-${id}`).textContent = next;
-  document.getElementById(`card-${id}`).classList.toggle('selected', next>0);
+  const qtyEl = document.getElementById(`qty-${id}`);
+  if (qtyEl) qtyEl.textContent = next;
+  const cardEl = document.getElementById(`card-${id}`);
+  if (cardEl) cardEl.classList.toggle('selected', next>0);
+  const p = findProduct(id);
+  const promo = getPromo(p);
+  if (promo) {
+    const hintEl = document.getElementById(`bulkhint-${id}`);
+    if (hintEl) hintEl.textContent = freeHintText(id, promo);
+  }
   updateCartBar();
 }
 
 function getTotal() {
   return Object.entries(cart).reduce((s,[id,val])=>{
-    const p = PRODUCTS.find(x=>x.id==id);
+    const p = findProduct(id);
     if (!p) return s;
     if (typeof val === 'object') {
       return s + Object.values(val).reduce((a,q)=>a+q,0) * p.price;
@@ -581,13 +734,17 @@ function getTotal() {
 //  VARIANT MODAL
 // ══════════════════════════════════════════════
 function openModal(id) {
-  const p = PRODUCTS.find(x=>x.id==id);
+  const p = findProduct(id);
   if (!p) return;
   modalProductId = id;
   modalTemp = cart[id] ? {...cart[id]} : {};
+  const promo = getPromo(p);
 
   document.getElementById('modalName').textContent  = p.name;
   document.getElementById('modalPrice').textContent = `RM ${p.price.toFixed(2)} / ${p.unit}`;
+  document.getElementById('modalBulkNote').textContent = promo
+    ? I18N[currentLang].bulkPromoBanner(promo.buyQty, promo.freeQty)
+    : '';
   const imgEl = document.getElementById('modalImg');
   imgEl.src = p.img||''; imgEl.style.display='';
   imgEl.onerror = ()=>{ imgEl.style.display='none'; };
@@ -598,6 +755,7 @@ function openModal(id) {
     const safeId = v.replace(/[^a-zA-Z0-9]/g,'_');
     const qty = modalTemp[v]||0;
     const chk = qty>0;
+    const free = calcFree(qty, promo);
     return `
     <div class="variant-row">
       <div class="var-check" onclick="toggleVariant('${v.replace(/'/g,"\\'")}')">
@@ -606,10 +764,13 @@ function openModal(id) {
       <span class="variant-label" onclick="toggleVariant('${v.replace(/'/g,"\\'")}')">
         ${v}
       </span>
-      <div class="var-qty-row ${chk?'':'disabled'}" id="vqty-${safeId}">
-        <button class="var-qty-btn" onclick="event.stopPropagation();changeVarQty('${v.replace(/'/g,"\\'")}', -1)">−</button>
-        <span class="var-qty-val" id="vqtyval-${safeId}">${qty||1}</span>
-        <button class="var-qty-btn" onclick="event.stopPropagation();changeVarQty('${v.replace(/'/g,"\\'")}', 1)">+</button>
+      <div class="var-qty-wrap">
+        <div class="var-qty-row ${chk?'':'disabled'}" id="vqty-${safeId}">
+          <button class="var-qty-btn" onclick="event.stopPropagation();changeVarQty('${v.replace(/'/g,"\\'")}', -1)">−</button>
+          <span class="var-qty-val" id="vqtyval-${safeId}">${qty||1}</span>
+          <button class="var-qty-btn" onclick="event.stopPropagation();changeVarQty('${v.replace(/'/g,"\\'")}', 1)">+</button>
+        </div>
+        ${promo ? `<div class="var-free-hint" id="vfree-${safeId}">${free>0?I18N[currentLang].freeSuffix(free):''}</div>` : ''}
       </div>
     </div>`;
   }).join('');
@@ -646,6 +807,7 @@ function toggleVariant(v) {
     if(box) box.classList.add('checked');
     if(qtyRow) qtyRow.classList.remove('disabled');
   }
+  updateVarFreeHint(v);
   updateModalConfirm();
 }
 
@@ -653,6 +815,19 @@ function changeVarQty(v, delta) {
   const safeId = v.replace(/[^a-zA-Z0-9]/g,'_');
   modalTemp[v] = Math.max(1, (modalTemp[v]||1) + delta);
   document.getElementById(`vqtyval-${safeId}`).textContent = modalTemp[v];
+  updateVarFreeHint(v);
+}
+
+function updateVarFreeHint(v) {
+  const p = findProduct(modalProductId);
+  const promo = getPromo(p);
+  if (!promo) return;
+  const safeId = v.replace(/[^a-zA-Z0-9]/g,'_');
+  const el = document.getElementById(`vfree-${safeId}`);
+  if (!el) return;
+  const qty = modalTemp[v]||0;
+  const free = calcFree(qty, promo);
+  el.textContent = free>0 ? I18N[currentLang].freeSuffix(free) : '';
 }
 
 // ✅ FIX: Updated to handle empty selection (clear) case
@@ -689,7 +864,8 @@ function confirmVariants() {
     cart[modalProductId] = cleaned;
   }
   closeModal();
-  renderProducts();
+  renderGrid(PRODUCTS, 'productsGrid');
+  renderGrid(DRINKS, 'drinksGrid');
   updateCartBar();
 }
 
@@ -698,7 +874,8 @@ function removeVariantProduct() {
   if (!modalProductId) return;
   delete cart[modalProductId];
   closeModal();
-  renderProducts();
+  renderGrid(PRODUCTS, 'productsGrid');
+  renderGrid(DRINKS, 'drinksGrid');
   updateCartBar();
   showToast(I18N[currentLang].toastRemoved || 'Item dibuang dari pesanan 🗑');
 }
@@ -747,24 +924,31 @@ function goToChecklist() {
   document.getElementById('ckNote').textContent = note;
 
   document.getElementById('ckItems').innerHTML = Object.entries(cart).map(([id,val])=>{
-    const p=PRODUCTS.find(x=>x.id==id);
+    const p=findProduct(id);
     if (!p) return '';
+    const promo = getPromo(p);
     if (typeof val === 'object') {
-      return Object.entries(val).filter(([,q])=>q>0).map(([vname,qty])=>`
+      return Object.entries(val).filter(([,q])=>q>0).map(([vname,qty])=>{
+        const free = calcFree(qty, promo);
+        const freeTag = free>0 ? ` <span class="free-tag">(${t.freeSuffix(free)})</span>` : '';
+        return `
         <div class="item-row">
           <img class="item-thumb" src="${p.img||''}" alt="${p.name}" onerror="this.style.display='none'">
           <div class="item-name-wrap">
             <div class="item-name">${p.name}</div>
             <div class="item-unit" style="color:var(--terracotta);font-weight:500">${vname}</div>
           </div>
-          <span class="item-qty">×${qty}</span>
+          <span class="item-qty">×${qty}${freeTag}</span>
           <span class="item-subtotal">RM ${(p.price*qty).toFixed(2)}</span>
-        </div>`).join('');
+        </div>`;
+      }).join('');
     }
+    const free = calcFree(val, promo);
+    const freeTag = free>0 ? ` <span class="free-tag">(${t.freeSuffix(free)})</span>` : '';
     return `<div class="item-row">
       <img class="item-thumb" src="${p.img||''}" alt="${p.name}" onerror="this.style.display='none'">
       <div class="item-name-wrap"><div class="item-name">${p.name}</div><div class="item-unit">${p.unit}</div></div>
-      <span class="item-qty">×${val}</span>
+      <span class="item-qty">×${val}${freeTag}</span>
       <span class="item-subtotal">RM ${(p.price*val).toFixed(2)}</span>
     </div>`;
   }).join('');
@@ -841,12 +1025,14 @@ function downloadPDF() {
 
   let rowNum = 1;
   Object.entries(cart).forEach(([id,val]) => {
-    const p = PRODUCTS.find(x => x.id == id);
+    const p = findProduct(id);
     if (!p) return;
+    const promo = getPromo(p);
 
     const renderRow = (label, qty) => {
       const isAlt = rowNum % 2 === 0;
       if (isAlt) { doc.setFillColor(253,246,236); doc.rect(14, y-5, 182, ROW_H, 'F'); }
+      const free = calcFree(qty, promo);
       doc.setTextColor(180,130,70); doc.setFont('helvetica','bold'); doc.setFontSize(8.5);
       doc.text(String(rowNum), COL.no+1, y);
       doc.setTextColor(40,20,5); doc.setFont('helvetica','normal'); doc.setFontSize(10);
@@ -856,7 +1042,8 @@ function downloadPDF() {
       doc.text(shortUnit, COL.name, y+5);
       doc.setTextColor(40,20,5); doc.setFont('helvetica','normal'); doc.setFontSize(10);
       doc.text('RM '+p.price.toFixed(2), COL.price, y, {align:'right'});
-      doc.text('x'+qty, COL.qty, y, {align:'right'});
+      const qtyText = 'x'+qty + (free>0 ? ' (+'+free+' free)' : '');
+      doc.text(qtyText, COL.qty, y, {align:'right'});
       doc.setFont('helvetica','bold');
       doc.text('RM '+(p.price*qty).toFixed(2), COL.sub, y, {align:'right'});
       y += ROW_H; rowNum++;
@@ -907,15 +1094,20 @@ function buildOrderText() {
   msg += `*${t.waItems}:*\n`;
   let i = 1;
   Object.entries(cart).forEach(([id,val]) => {
-    const p = PRODUCTS.find(x => x.id == id);
+    const p = findProduct(id);
     if (!p) return;
+    const promo = getPromo(p);
     if (typeof val === 'object') {
       Object.entries(val).filter(([,q])=>q>0).forEach(([vname,qty]) => {
-        msg += `${i}. ${p.name} (${vname}) ×${qty}  =  RM ${(p.price*qty).toFixed(2)}\n`;
+        const free = calcFree(qty, promo);
+        const freeTxt = free>0 ? ` (+${free} ${t.waFree})` : '';
+        msg += `${i}. ${p.name} (${vname}) ×${qty}${freeTxt}  =  RM ${(p.price*qty).toFixed(2)}\n`;
         i++;
       });
     } else {
-      msg += `${i}. ${p.name} ×${val}  =  RM ${(p.price*val).toFixed(2)}\n`;
+      const free = calcFree(val, promo);
+      const freeTxt = free>0 ? ` (+${free} ${t.waFree})` : '';
+      msg += `${i}. ${p.name} ×${val}${freeTxt}  =  RM ${(p.price*val).toFixed(2)}\n`;
       i++;
     }
   });
@@ -951,7 +1143,9 @@ function showToast(msg) {
 }
 
 // Init
-renderProducts();
+renderGrid(PRODUCTS, 'productsGrid');
+renderGrid(DRINKS, 'drinksGrid');
+renderBulkBanner();
 setLang('ms');
 document.getElementById('custDate').min = new Date().toISOString().split('T')[0];
 </script>
